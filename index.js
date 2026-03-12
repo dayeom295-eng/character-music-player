@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v1.8 — 신청곡 최우선 반영 & 접기/펴기(최소화) 모바일 호환성 패치
+ * v1.8 — 전 기기 상단 고정 & 전용 API 연결 버그 완벽 수정
  */
 
 (async function () {
@@ -30,15 +30,7 @@
         '분노','화가','격분','열받','짜증','슬픔','눈물','울음','설렘','두근','흥분','황홀','절망','그리움','외로움','쓸쓸','긴장','두려움',
         '음악','노래','곡','멜로디','리듬','흥얼','콧노래','듣고 있','틀어','플레이리스트','이어폰','헤드폰','BGM','피아노','기타','연주',
         '새벽','늦은 밤','저녁 노을','황혼','달빛','빗소리','비가 내리','눈이 내리','드라이브','산책','카페','침대','잠들기 전','귀갓길',
-        '위로','힐링','추억','에어팟','스피커','오디오','재생','뮤직',
-        'music','song','melody','rhythm','humming','listening to','play a track','playlist','earphones','headphones','bgm',
-        'piano','guitar','playing','sing','dancing','vibe','dawn','sunset','raining','driving','walking','cafe',
-        'comfort','healing','crying','tears','longing','memories','airpods','speaker','audio','mp3','track','tune',
-        'acoustic','jazz','pop','rock','classical','sad','happy','angry','lonely','nostalgic',
-        '音楽','歌','曲','メロディ','リズム','鼻歌','聴いて','かけて','プレイリスト','イヤホン','ヘッドホン','BGM',
-        'ピアノ','ギター','演奏','歌う','踊る','エモい','夜明け','夕暮れ','雨','ドライブ','散歩','カフェ',
-        '慰め','癒し','涙','泣く','恋しい','思い出','スピーカー','オーディオ','再生','トラック','チューン',
-        '怒','悲','泣','嬉','寂','切ない','懐かしい'
+        '위로','힐링','추억','에어팟','스피커','오디오','재생','뮤직'
     ];
 
     let lastCardTime = 0;
@@ -61,47 +53,7 @@
         const settingsHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
         $('#extensions_settings').append(settingsHtml);
 
-        if ($('#cmp-cardstyle option[value="retro"]').length === 0) {
-            $('#cmp-cardstyle').append('<option value="retro">4. 레트로 (앨범아트 안 보임)</option>');
-        }
-        $('#cmp-cardstyle option[value="full"]').text('1. 풀카드 (앨범아트 보임)');
-        $('#cmp-cardstyle option[value="mini"]').text('2. LP판 (앨범아트 보임)');
-        $('#cmp-cardstyle option[value="text"]').text('3. 에어팟 (앨범아트 안 보임)');
-
-        const aiUI = `
-            <div class="flex-container flexFlowColumn" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--SmartThemeBorderColor);">
-                <div style="margin-bottom: 10px;"><b>🤖 음악 추천용 전용 AI 설정</b></div>
-                <label for="cmp-api-provider"><b>연결할 API 선택</b></label>
-                <select id="cmp-api-provider" class="text_pole" style="margin-bottom: 15px;">
-                    <option value="sillytavern">실리태번 메인 API (자동)</option>
-                    <option value="gemini">Google Gemini API</option>
-                    <option value="custom">타사 API (OpenRouter, OpenAI 등)</option>
-                </select>
-                <div id="cmp-gemini-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; border-left: 3px solid var(--SmartThemeBlurTintColor);">
-                    <label for="cmp-gemini-model">Gemini 모델</label>
-                    <select id="cmp-gemini-model" class="text_pole" style="margin-bottom: 10px;">
-                        <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option>
-                        <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro</option>
-                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
-                        <option value="gemini-2.5-pro-latest">Gemini 2.5 Pro</option>
-                        <option value="gemini-3.0-flash-latest">Gemini 3.0 Flash</option>
-                    </select>
-                </div>
-                <div id="cmp-custom-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; border-left: 3px solid var(--SmartThemeBlurTintColor);">
-                    <label for="cmp-custom-url">API 엔드포인트 URL</label>
-                    <input id="cmp-custom-url" type="text" class="text_pole" placeholder="예: https://openrouter.ai/api/v1/chat/completions" style="margin-bottom: 10px;">
-                    <label for="cmp-custom-model">모델명</label>
-                    <input id="cmp-custom-model" type="text" class="text_pole" placeholder="예: gpt-4o-mini" style="margin-bottom: 10px;">
-                </div>
-                <div id="cmp-key-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; margin-top: 5px;">
-                    <label for="cmp-api-key">API Key</label>
-                    <input id="cmp-api-key" type="password" class="text_pole" placeholder="해당 플랫폼의 발급 키 입력">
-                </div>
-            </div>
-        `;
-        
-        $(`#extensions_settings .inline-drawer-content`).last().append(aiUI);
-
+        // UI 값 초기화
         $('#cmp-enabled').prop('checked', s.enabled);
         $('#cmp-apikey').val(s.youtubeApiKey || '');
         $('#cmp-cooldown').val(s.cooldownMinutes);
@@ -114,65 +66,116 @@
         $('#cmp-custom-model').val(s.customModel || '');
         $('#cmp-api-key').val(s.apiKey || '');
 
+        // API 제공자에 따른 메뉴 숨김/표시 처리
         function updateAiUi() {
             const provider = $('#cmp-api-provider').val();
-            if (provider === 'sillytavern') { $('#cmp-gemini-wrap, #cmp-custom-wrap, #cmp-key-wrap').slideUp(150); }
-            else if (provider === 'gemini') { $('#cmp-gemini-wrap, #cmp-key-wrap').slideDown(150); $('#cmp-custom-wrap').hide(); }
-            else if (provider === 'custom') { $('#cmp-custom-wrap, #cmp-key-wrap').slideDown(150); $('#cmp-gemini-wrap').hide(); }
+            if (provider === 'sillytavern') { 
+                $('#cmp-gemini-wrap, #cmp-custom-wrap, #cmp-key-wrap').slideUp(150); 
+            } else if (provider === 'gemini') { 
+                $('#cmp-gemini-wrap, #cmp-key-wrap').slideDown(150); 
+                $('#cmp-custom-wrap').hide(); 
+            } else if (provider === 'custom') { 
+                $('#cmp-custom-wrap, #cmp-key-wrap').slideDown(150); 
+                $('#cmp-gemini-wrap').hide(); 
+            }
         }
         updateAiUi(); 
 
+        // 이벤트 리스너 등록
         $('#cmp-enabled').on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
         $('#cmp-apikey').on('input', function () { getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-cooldown').on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
         $('#cmp-sensitivity').on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
         $('#cmp-cardstyle').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
+        
         $('#cmp-api-provider').on('change', function () { getSettings().apiProvider = this.value; saveSettingsDebounced(); updateAiUi(); });
         $('#cmp-gemini-model').on('change', function () { getSettings().geminiModel = this.value; saveSettingsDebounced(); });
         $('#cmp-custom-url').on('input', function () { getSettings().customUrl = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-custom-model').on('input', function () { getSettings().customModel = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
 
-        // 전역 최소화 복구 버튼 삽입 (모바일 터치 오류 방지 위해 onclick 속성 제거)
+        // 테스트 버튼 로직
+        $('#cmp-test-btn').on('click', function () {
+            const dummyMusic = { title: "API 연결 테스트 곡", artist: "테스트 아티스트", reason: "이 카드가 보인다면 성공입니다." };
+            const dummyVideo = { watchUrl: "https://youtube.com", thumbnail: null };
+            renderCard(dummyMusic, dummyVideo, {name2: "테스터"}, getSettings().cardStyle || 'full');
+        });
+
         if ($('#cmp-minimized-btn').length === 0) {
-            $('body').append('<div id="cmp-minimized-btn">🎵 음악 펴기</div>');
+            $(document.body).append('<div id="cmp-minimized-btn">🎵 음악 펴기</div>');
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (신청곡 우선 & 접기/펴기 호환패치) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (API 안정화) ✅`);
     }
 
+    // 🚀 API 분기 처리
     async function getAiResponse(prompt, isJson = false) {
         const s = getSettings();
-        if (s.apiProvider === 'gemini') return await callGeminiAPI(prompt, isJson, s);
-        else if (s.apiProvider === 'custom') return await callCustomOpenAI(prompt, isJson, s);
-        else {
+        if (s.apiProvider === 'gemini') {
+            return await callGeminiAPI(prompt, isJson, s);
+        } else if (s.apiProvider === 'custom') {
+            return await callCustomOpenAI(prompt, isJson, s);
+        } else {
             const { generateQuietPrompt } = SillyTavern.getContext();
             try { return await generateQuietPrompt(prompt); } catch { return null; }
         }
     }
 
+    // 🤖 Gemini API 연결
     async function callGeminiAPI(prompt, isJson, s) {
-        if (!s.apiKey) return null;
+        if (!s.apiKey) {
+            console.warn("[CMP] Gemini API 키가 없습니다.");
+            return null;
+        }
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${s.geminiModel}:generateContent?key=${s.apiKey}`;
         const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 200 } };
+        
         if (isJson) payload.generationConfig.responseMimeType = "application/json";
+
         try {
             const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const data = await res.json();
+            if (data.error) console.error("[CMP] Gemini API 오류:", data.error);
             return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
-        } catch { return null; }
+        } catch (err) { 
+            console.error("[CMP] Gemini 요청 실패:", err);
+            return null; 
+        }
     }
 
+    // 🤖 OpenRouter / 타사 OpenAI 호환 API 연결
     async function callCustomOpenAI(prompt, isJson, s) {
-        if (!s.customUrl || !s.customModel || !s.apiKey) return null;
-        const payload = { model: s.customModel, messages: [{ role: "user", content: prompt }], temperature: 0.7, max_tokens: 200 };
-        if (isJson) payload.response_format = { type: "json_object" };
+        if (!s.customUrl || !s.customModel || !s.apiKey) {
+            console.warn("[CMP] Custom API 설정이 누락되었습니다.");
+            return null;
+        }
+        
+        // OpenRouter에서 다른 모델(Claude 등)이 터지지 않도록 response_format 옵션을 아예 뺐습니다.
+        // 대신 프롬프트에서 철저하게 JSON을 요구하게 만듭니다.
+        const payload = { 
+            model: s.customModel, 
+            messages: [{ role: "user", content: prompt }], 
+            temperature: 0.7, 
+            max_tokens: 200 
+        };
+
         try {
-            const res = await fetch(s.customUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s.apiKey}` }, body: JSON.stringify(payload) });
+            const res = await fetch(s.customUrl, { 
+                method: 'POST', 
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${s.apiKey}` 
+                }, 
+                body: JSON.stringify(payload) 
+            });
             const data = await res.json();
+            if (data.error) console.error("[CMP] Custom API 오류:", data.error);
             return data.choices?.[0]?.message?.content || null;
-        } catch { return null; }
+        } catch (err) { 
+            console.error("[CMP] Custom API 요청 실패:", err);
+            return null; 
+        }
     }
 
     async function onMessageReceived(messageIdOrData) {
@@ -199,29 +202,30 @@
 
         try {
             const musicInfo = await requestMusic(text, context);
-            if (!musicInfo) return;
+            if (!musicInfo) {
+                console.warn("[CMP] AI가 곡 정보를 생성하지 못했습니다.");
+                return;
+            }
             const videoInfo = await searchYouTube(musicInfo, s.youtubeApiKey);
             renderCard(musicInfo, videoInfo, context, s.cardStyle || 'full');
         } catch (err) {
-            console.error(`[${EXTENSION_NAME}] 오류:`, err);
+            console.error(`[${EXTENSION_NAME}] 메인 루프 오류:`, err);
         } finally {
             isProcessing = false;
         }
     }
 
     async function checkTrigger(text, sensitivity, context) {
-        if (sensitivity === 'high') return await aiTriggerCheck(text, context);
+        if (sensitivity === 'high') {
+            try {
+                const charName = context.name2 || '캐릭터';
+                const prompt = `다음은 "${charName}"의 대화 메시지야:\n"${text}"\n이 메시지가 음악 카드를 띄울 만한 감성적인 상황이면 "yes", 아니면 "no"만 답해.`;
+                const res = await getAiResponse(prompt, false);
+                return res?.toLowerCase().includes('yes') ?? false;
+            } catch { return false; }
+        }
         const count = TRIGGER_PATTERNS.filter(p => text.toLowerCase().includes(p.toLowerCase())).length;
         return sensitivity === 'low' ? count >= 2 : count >= 1;
-    }
-
-    async function aiTriggerCheck(text, context) {
-        try {
-            const charName = context.name2 || '캐릭터';
-            const prompt = `다음은 "${charName}"의 대화 메시지야:\n"${text}"\n이 메시지가 음악 카드를 띄울 만한 감성적인 상황이면 "yes", 아니면 "no"만 답해.`;
-            const res = await getAiResponse(prompt, false);
-            return res?.toLowerCase().includes('yes') ?? false;
-        } catch { return false; }
     }
 
     async function requestMusic(text, context) {
@@ -235,18 +239,22 @@ ${recentChat}
 [중요 지침]
 1. 만약 대화 중에 유저나 캐릭터가 **특정 곡 제목이나 아티스트**를 명시하며 듣자고 했다면, 반드시 그 곡을 찾아줘.
 2. 특정 곡 언급이 없다면, 현재 분위기와 감정에 맞는 실제 존재하는 곡 1개를 알아서 추천해.
-반드시 아래 JSON 형식으로만 답해. 다른 텍스트 없이.
+반드시 아래 JSON 형식으로만 답해. 마크다운이나 다른 텍스트는 절대 쓰지 마.
 {"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
 
         try {
             const res = await getAiResponse(prompt, true);
             if (!res) return null;
-            const clean = res.replace(/```json|```/g, '').trim();
+            // 앞뒤 쓸데없는 텍스트 제거하고 중괄호 부분만 추출
+            const clean = res.replace(/```json|```/gi, '').trim();
             const s = clean.indexOf('{');
             const e = clean.lastIndexOf('}');
             if (s === -1 || e === -1) return null;
             return JSON.parse(clean.slice(s, e + 1));
-        } catch { return null; }
+        } catch (err) { 
+            console.error("[CMP] JSON 파싱 실패:", err);
+            return null; 
+        }
     }
 
     async function searchYouTube(musicInfo, apiKey) {
@@ -262,7 +270,6 @@ ${recentChat}
         } catch { return fallback; }
     }
 
-  // 렌더링 방식 (모바일 호환성을 위해 버튼에서 onclick 속성 제거하고 data 속성으로 변경)
     function renderCard(musicInfo, videoInfo, context, style) {
         const charName = context.name2 || '캐릭터';
         const cardId   = `cmp-card-${Date.now()}`;
@@ -290,14 +297,11 @@ ${recentChat}
             card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card">${thumbHtml}<div class="music-card-info"><div class="music-card-label">${escapeHtml(charName)} 듣는 중</div><div class="music-card-title">${escapeHtml(musicInfo.title)}</div><div class="music-card-artist">${escapeHtml(musicInfo.artist)}</div>${musicInfo.reason ? `<div class="music-card-artist" style="font-style:italic;opacity:0.55;margin-top:2px">${escapeHtml(musicInfo.reason)}</div>` : ''}</div>${controls}</div></div>`;
         }
 
-        // 컨테이너가 없으면 강제 생성 후 body 끝에 붙임
         if ($('#cmp-floating-container').length === 0) {
             $(document.body).append('<div id="cmp-floating-container" style="display:none;"></div>');
         }
         
         $('#cmp-minimized-btn').hide();
-        
-        // 플로팅 컨테이너에 HTML을 넣고, 확실하게 화면에 보이도록 fadeIn 사용
         $('#cmp-floating-container').html(card).css('display', 'flex').hide().fadeIn(300);
     }
 
@@ -306,7 +310,6 @@ ${recentChat}
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // ✨ 모바일 터치 호환성을 위한 jQuery 이벤트 위임
     $(document).on('click', '.music-card-close', function () {
         const cardId = $(this).attr('data-id');
         $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); 
