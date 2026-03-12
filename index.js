@@ -1,12 +1,11 @@
 /**
  * Character Music Player Extension for SillyTavern
- * v1.3 — 안정화 최종판
+ * v1.4 — 안정화 최종판 (YouTube 전용 + 다중 전용 AI 라우팅)
  *
  * 재생 방식:
  *  - API 키 있음: YouTube 검색 → 앨범아트 표시 + ▶ 클릭 시 YouTube 새 탭으로 열기
  *  - API 키 없음: YouTube 검색 링크로 새 탭 열기
- *
- * (YouTube embed는 localhost origin을 차단하므로 내부 재생 불가)
+ *  - AI 통신: 실리태번 기본 API, Gemini 전용(비용표시), 커스텀 API 완벽 지원
  */
 
 (async function () {
@@ -19,12 +18,20 @@
 
     const EXTENSION_NAME = 'character-music-player';
 
+    // ✨ 설정 기본값 (전용 AI 설정 추가)
     const DEFAULT_SETTINGS = Object.freeze({
         enabled: true,
         youtubeApiKey: '',
         cooldownMinutes: 3,
         triggerSensitivity: 'medium',
         cardStyle: 'full',
+        
+        // 다중 AI 설정
+        apiProvider: 'sillytavern', // 'sillytavern', 'gemini', 'custom'
+        apiKey: '',
+        geminiModel: 'gemini-1.5-flash-latest',
+        customUrl: '',
+        customModel: ''
     });
 
     const TRIGGER_PATTERNS = [
@@ -55,39 +62,179 @@
         return extension_settings[EXTENSION_NAME];
     }
 
-    // ===== 초기화 =====
+    // ===== 초기화 및 UI 생성 =====
     async function initExtension() {
         const s = getSettings();
 
+        // 외부 HTML 로드
         const settingsHtml = await $.get(
             `scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`
         );
         $('#extensions_settings').append(settingsHtml);
 
+        // ✨ JS에서 동적으로 전용 AI 설정 UI 추가
+        const aiUI = `
+            <div class="flex-container flexFlowColumn" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--SmartThemeBorderColor);">
+                <div style="margin-bottom: 10px;"><b>🤖 음악 추천용 전용 AI 설정</b></div>
+                
+                <label for="cmp-api-provider"><b>연결할 API 선택</b></label>
+                <select id="cmp-api-provider" class="text_pole" style="margin-bottom: 15px;">
+                    <option value="sillytavern">실리태번 메인 API (자동)</option>
+                    <option value="gemini">Google Gemini API</option>
+                    <option value="custom">타사 API (OpenRouter, OpenAI 등)</option>
+                </select>
+
+                <!-- Gemini 전용 영역 -->
+                <div id="cmp-gemini-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; border-left: 3px solid var(--SmartThemeBlurTintColor);">
+                    <label for="cmp-gemini-model">Gemini 모델</label>
+                    <select id="cmp-gemini-model" class="text_pole" style="margin-bottom: 10px;">
+                        <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash (거의 무료)</option>
+                        <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro (유료)</option>
+                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (거의 무료)</option>
+                        <option value="gemini-2.5-pro-latest">Gemini 2.5 Pro (유료)</option>
+                        <option value="gemini-3.0-flash-latest">Gemini 3.0 Flash (거의 무료)</option>
+                    </select>
+                </div>
+
+                <!-- 타사 API 전용 영역 -->
+                <div id="cmp-custom-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; border-left: 3px solid var(--SmartThemeBlurTintColor);">
+                    <label for="cmp-custom-url">API 엔드포인트 URL (Chat Completions)</label>
+                    <input id="cmp-custom-url" type="text" class="text_pole" placeholder="예: https://openrouter.ai/api/v1/chat/completions" style="margin-bottom: 10px;">
+                    
+                    <label for="cmp-custom-model">모델명</label>
+                    <input id="cmp-custom-model" type="text" class="text_pole" placeholder="예: gpt-4o-mini" style="margin-bottom: 10px;">
+                </div>
+
+                <!-- 공통 키 입력 영역 -->
+                <div id="cmp-key-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; margin-top: 5px;">
+                    <label for="cmp-api-key">API Key</label>
+                    <input id="cmp-api-key" type="password" class="text_pole" placeholder="해당 플랫폼의 발급 키 입력">
+                </div>
+            </div>
+        `;
+        
+        $(`#extensions_settings .inline-drawer-content`).last().append(aiUI);
+
+        // 기본 설정 불러오기
         $('#cmp-enabled').prop('checked', s.enabled);
         $('#cmp-apikey').val(s.youtubeApiKey || '');
         $('#cmp-cooldown').val(s.cooldownMinutes);
         $('#cmp-sensitivity').val(s.triggerSensitivity);
         $('#cmp-cardstyle').val(s.cardStyle || 'full');
+        
+        // AI 설정 불러오기
+        $('#cmp-api-provider').val(s.apiProvider || 'sillytavern');
+        $('#cmp-gemini-model').val(s.geminiModel || 'gemini-1.5-flash-latest');
+        $('#cmp-custom-url').val(s.customUrl || '');
+        $('#cmp-custom-model').val(s.customModel || '');
+        $('#cmp-api-key').val(s.apiKey || '');
 
-        $('#cmp-enabled').on('change', function () {
-            getSettings().enabled = this.checked; saveSettingsDebounced();
-        });
-        $('#cmp-apikey').on('input', function () {
-            getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced();
-        });
-        $('#cmp-cooldown').on('input', function () {
-            getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced();
-        });
-        $('#cmp-sensitivity').on('change', function () {
-            getSettings().triggerSensitivity = this.value; saveSettingsDebounced();
-        });
-        $('#cmp-cardstyle').on('change', function () {
-            getSettings().cardStyle = this.value; saveSettingsDebounced();
-        });
+        // UI 표시 업데이트 함수
+        function updateAiUi() {
+            const provider = $('#cmp-api-provider').val();
+            if (provider === 'sillytavern') {
+                $('#cmp-gemini-wrap, #cmp-custom-wrap, #cmp-key-wrap').slideUp(150);
+            } else if (provider === 'gemini') {
+                $('#cmp-gemini-wrap, #cmp-key-wrap').slideDown(150);
+                $('#cmp-custom-wrap').hide();
+            } else if (provider === 'custom') {
+                $('#cmp-custom-wrap, #cmp-key-wrap').slideDown(150);
+                $('#cmp-gemini-wrap').hide();
+            }
+        }
+        updateAiUi(); 
+
+        // 이벤트 리스너
+        $('#cmp-enabled').on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
+        $('#cmp-apikey').on('input', function () { getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced(); });
+        $('#cmp-cooldown').on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
+        $('#cmp-sensitivity').on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
+        $('#cmp-cardstyle').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
+        
+        $('#cmp-api-provider').on('change', function () { getSettings().apiProvider = this.value; saveSettingsDebounced(); updateAiUi(); });
+        $('#cmp-gemini-model').on('change', function () { getSettings().geminiModel = this.value; saveSettingsDebounced(); });
+        $('#cmp-custom-url').on('input', function () { getSettings().customUrl = this.value.trim(); saveSettingsDebounced(); });
+        $('#cmp-custom-model').on('input', function () { getSettings().customModel = this.value.trim(); saveSettingsDebounced(); });
+        $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.3 ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.4 (다중 AI 지원 + YouTube 전용) ✅`);
+    }
+
+    // ✨ ===== 통합 AI 호출 라우터 ===== ✨
+    async function getAiResponse(prompt, isJson = false) {
+        const s = getSettings();
+        
+        if (s.apiProvider === 'gemini') {
+            return await callGeminiAPI(prompt, isJson, s);
+        } else if (s.apiProvider === 'custom') {
+            return await callCustomOpenAI(prompt, s);
+        } else {
+            console.log(`[${EXTENSION_NAME}] 실리태번 기본 API로 음악을 추천받습니다.`);
+            const { generateQuietPrompt } = SillyTavern.getContext();
+            try { return await generateQuietPrompt(prompt); } 
+            catch (err) { console.error(err); return null; }
+        }
+    }
+
+    // ✨ [1] Google Gemini 전용 API 직접 호출
+    async function callGeminiAPI(prompt, isJson, s) {
+        if (!s.apiKey) {
+            toastr.error("Gemini API Key가 입력되지 않았습니다."); return null;
+        }
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${s.geminiModel}:generateContent?key=${s.apiKey}`;
+        const payload = {
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 200 }
+        };
+        // 완벽한 JSON 응답 강제 (1.5 이상 지원)
+        if (isJson) payload.generationConfig.responseMimeType = "application/json";
+
+        try {
+            const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error(`Gemini 오류 ${res.status}`);
+            const data = await res.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+        } catch (err) {
+            console.error(`[${EXTENSION_NAME}] Gemini 실패:`, err);
+            toastr.error("Gemini 호출 실패. API 키를 확인하세요."); return null;
+        }
+    }
+
+    // ✨ [2] 타사 커스텀 API (OpenAI 규격) 호출
+    async function callCustomOpenAI(prompt, s) {
+        if (!s.customUrl || !s.customModel || !s.apiKey) {
+            toastr.error("커스텀 API 설정(URL, 모델명, 키)을 모두 입력해주세요."); return null;
+        }
+        const payload = {
+            model: s.customModel,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: 200
+        };
+        // JSON 응답 포맷 (OpenAI 지원 모델 한정)
+        if (isJson) payload.response_format = { type: "json_object" };
+
+        try {
+            const res = await fetch(s.customUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${s.apiKey}`
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error(`API 오류 ${res.status}`);
+            const data = await res.json();
+            return data.choices?.[0]?.message?.content || null;
+        } catch (err) {
+            console.error(`[${EXTENSION_NAME}] 타사 API 실패:`, err);
+            toastr.error("타사 API 호출 실패. URL과 키를 확인하세요."); return null;
+        }
     }
 
     // ===== 메시지 수신 =====
@@ -141,21 +288,21 @@
         return sensitivity === 'low' ? count >= 2 : count >= 1;
     }
 
+    // ✨ AI 트리거 체크
     async function aiTriggerCheck(text, context) {
         try {
             const charName = context.name2 || '캐릭터';
-            const { generateQuietPrompt } = SillyTavern.getContext();
             const prompt = `다음은 "${charName}"의 대화 메시지야:\n"${text}"\n이 메시지가 음악 카드를 띄울 만한 감성적인 상황이면 "yes", 아니면 "no"만 답해.`;
-            const res = await generateQuietPrompt(prompt);
+            
+            const res = await getAiResponse(prompt, false);
             return res?.toLowerCase().includes('yes') ?? false;
         } catch {
             return false;
         }
     }
 
-    // ===== AI 음악 추천 =====
+    // ✨ AI 음악 추천
     async function requestMusic(text, context) {
-        const { generateQuietPrompt } = SillyTavern.getContext();
         const charName = context.name2 || '캐릭터';
         const recentChat = (context.chat || [])
             .slice(-6)
@@ -171,8 +318,9 @@ ${recentChat}
 {"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
 
         try {
-            const res = await generateQuietPrompt(prompt);
+            const res = await getAiResponse(prompt, true);
             if (!res) return null;
+            
             const clean = res.replace(/```json|```/g, '').trim();
             const s = clean.indexOf('{');
             const e = clean.lastIndexOf('}');
