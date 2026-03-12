@@ -1,11 +1,6 @@
 /**
  * Character Music Player Extension for SillyTavern
- * v1.4 — 안정화 최종판 (YouTube 전용 + 다중 전용 AI 라우팅)
- *
- * 재생 방식:
- *  - API 키 있음: YouTube 검색 → 앨범아트 표시 + ▶ 클릭 시 YouTube 새 탭으로 열기
- *  - API 키 없음: YouTube 검색 링크로 새 탭 열기
- *  - AI 통신: 실리태번 기본 API, Gemini 전용(비용표시), 커스텀 API 완벽 지원
+ * v1.5 — 최종판 (다국어 트리거 확장 & LP/iPod 커스텀 디자인 적용)
  */
 
 (async function () {
@@ -18,38 +13,43 @@
 
     const EXTENSION_NAME = 'character-music-player';
 
-    // ✨ 설정 기본값 (전용 AI 설정 추가)
     const DEFAULT_SETTINGS = Object.freeze({
         enabled: true,
         youtubeApiKey: '',
         cooldownMinutes: 3,
         triggerSensitivity: 'medium',
         cardStyle: 'full',
-        
-        // 다중 AI 설정
-        apiProvider: 'sillytavern', // 'sillytavern', 'gemini', 'custom'
+        apiProvider: 'sillytavern',
         apiKey: '',
         geminiModel: 'gemini-1.5-flash-latest',
         customUrl: '',
         customModel: ''
     });
 
+    // ✨ 한/영/일 방대한 트리거 단어 확장
     const TRIGGER_PATTERNS = [
-        '분노','화가','격분','열받','짜증','슬픔','눈물','울음','설렘','두근',
-        '흥분','황홀','절망','그리움','외로움','쓸쓸','긴장','두려움',
-        '怒','悲','泣','嬉','寂',
-        '음악','노래','곡','멜로디','리듬','흥얼','콧노래','듣고 있','틀어',
-        '플레이리스트','이어폰','헤드폰','BGM','음악을','노래를',
-        '音楽','歌','曲',
-        '새벽','늦은 밤','저녁 노을','황혼','달빛','빗소리','비가 내리','눈이 내리',
-        '카페','드라이브','혼자','창가','침대','잠들기 전','귀갓길',
-        '深夜','夜','雨','一人',
+        // 한국어
+        '분노','화가','격분','열받','짜증','슬픔','눈물','울음','설렘','두근','흥분','황홀','절망','그리움','외로움','쓸쓸','긴장','두려움',
+        '음악','노래','곡','멜로디','리듬','흥얼','콧노래','듣고 있','틀어','플레이리스트','이어폰','헤드폰','BGM','피아노','기타','연주',
+        '새벽','늦은 밤','저녁 노을','황혼','달빛','빗소리','비가 내리','눈이 내리','드라이브','산책','카페','침대','잠들기 전','귀갓길',
+        '위로','힐링','추억','에어팟','스피커','오디오','재생','뮤직',
+        
+        // 영어
+        'music','song','melody','rhythm','humming','listening to','play a track','playlist','earphones','headphones','bgm',
+        'piano','guitar','playing','sing','dancing','vibe','dawn','sunset','raining','driving','walking','cafe',
+        'comfort','healing','crying','tears','longing','memories','airpods','speaker','audio','mp3','track','tune',
+        'acoustic','jazz','pop','rock','classical','sad','happy','angry','lonely','nostalgic',
+        
+        // 일본어
+        '音楽','歌','曲','メロディ','リズム','鼻歌','聴いて','かけて','プレイリスト','イヤホン','ヘッドホン','BGM',
+        'ピアノ','ギター','演奏','歌う','踊る','エモい','夜明け','夕暮れ','雨','ドライブ','散歩','カフェ',
+        '慰め','癒し','涙','泣く','恋しい','思い出','スピーカー','オーディオ','再生','トラック','チューン',
+        '怒','悲','泣','嬉','寂','切ない','懐かしい'
     ];
 
     let lastCardTime = 0;
     let isProcessing = false;
 
-    // ===== 설정 =====
     function getSettings() {
         if (!extension_settings[EXTENSION_NAME]) {
             extension_settings[EXTENSION_NAME] = structuredClone(DEFAULT_SETTINGS);
@@ -62,17 +62,12 @@
         return extension_settings[EXTENSION_NAME];
     }
 
-    // ===== 초기화 및 UI 생성 =====
     async function initExtension() {
         const s = getSettings();
-
-        // 외부 HTML 로드
-        const settingsHtml = await $.get(
-            `scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`
-        );
+        const settingsHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
         $('#extensions_settings').append(settingsHtml);
 
-        // ✨ JS에서 동적으로 전용 AI 설정 UI 추가
+        // ✨ 모델 설명 제거된 UI
         const aiUI = `
             <div class="flex-container flexFlowColumn" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--SmartThemeBorderColor);">
                 <div style="margin-bottom: 10px;"><b>🤖 음악 추천용 전용 AI 설정</b></div>
@@ -84,28 +79,24 @@
                     <option value="custom">타사 API (OpenRouter, OpenAI 등)</option>
                 </select>
 
-                <!-- Gemini 전용 영역 -->
                 <div id="cmp-gemini-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; border-left: 3px solid var(--SmartThemeBlurTintColor);">
                     <label for="cmp-gemini-model">Gemini 모델</label>
                     <select id="cmp-gemini-model" class="text_pole" style="margin-bottom: 10px;">
-                        <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash (거의 무료)</option>
-                        <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro (유료)</option>
-                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (거의 무료)</option>
-                        <option value="gemini-2.5-pro-latest">Gemini 2.5 Pro (유료)</option>
-                        <option value="gemini-3.0-flash-latest">Gemini 3.0 Flash (거의 무료)</option>
+                        <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option>
+                        <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro</option>
+                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                        <option value="gemini-2.5-pro-latest">Gemini 2.5 Pro</option>
+                        <option value="gemini-3.0-flash-latest">Gemini 3.0 Flash</option>
                     </select>
                 </div>
 
-                <!-- 타사 API 전용 영역 -->
                 <div id="cmp-custom-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; border-left: 3px solid var(--SmartThemeBlurTintColor);">
                     <label for="cmp-custom-url">API 엔드포인트 URL (Chat Completions)</label>
                     <input id="cmp-custom-url" type="text" class="text_pole" placeholder="예: https://openrouter.ai/api/v1/chat/completions" style="margin-bottom: 10px;">
-                    
                     <label for="cmp-custom-model">모델명</label>
                     <input id="cmp-custom-model" type="text" class="text_pole" placeholder="예: gpt-4o-mini" style="margin-bottom: 10px;">
                 </div>
 
-                <!-- 공통 키 입력 영역 -->
                 <div id="cmp-key-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; margin-top: 5px;">
                     <label for="cmp-api-key">API Key</label>
                     <input id="cmp-api-key" type="password" class="text_pole" placeholder="해당 플랫폼의 발급 키 입력">
@@ -115,21 +106,18 @@
         
         $(`#extensions_settings .inline-drawer-content`).last().append(aiUI);
 
-        // 기본 설정 불러오기
         $('#cmp-enabled').prop('checked', s.enabled);
         $('#cmp-apikey').val(s.youtubeApiKey || '');
         $('#cmp-cooldown').val(s.cooldownMinutes);
         $('#cmp-sensitivity').val(s.triggerSensitivity);
         $('#cmp-cardstyle').val(s.cardStyle || 'full');
         
-        // AI 설정 불러오기
         $('#cmp-api-provider').val(s.apiProvider || 'sillytavern');
         $('#cmp-gemini-model').val(s.geminiModel || 'gemini-1.5-flash-latest');
         $('#cmp-custom-url').val(s.customUrl || '');
         $('#cmp-custom-model').val(s.customModel || '');
         $('#cmp-api-key').val(s.apiKey || '');
 
-        // UI 표시 업데이트 함수
         function updateAiUi() {
             const provider = $('#cmp-api-provider').val();
             if (provider === 'sillytavern') {
@@ -144,7 +132,6 @@
         }
         updateAiUi(); 
 
-        // 이벤트 리스너
         $('#cmp-enabled').on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
         $('#cmp-apikey').on('input', function () { getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-cooldown').on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
@@ -158,86 +145,62 @@
         $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.4 (다중 AI 지원 + YouTube 전용) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.5 (LP/iPod UI 업데이트) ✅`);
     }
 
-    // ✨ ===== 통합 AI 호출 라우터 ===== ✨
     async function getAiResponse(prompt, isJson = false) {
         const s = getSettings();
-        
         if (s.apiProvider === 'gemini') {
             return await callGeminiAPI(prompt, isJson, s);
         } else if (s.apiProvider === 'custom') {
-            return await callCustomOpenAI(prompt, s);
+            return await callCustomOpenAI(prompt, isJson, s);
         } else {
-            console.log(`[${EXTENSION_NAME}] 실리태번 기본 API로 음악을 추천받습니다.`);
             const { generateQuietPrompt } = SillyTavern.getContext();
             try { return await generateQuietPrompt(prompt); } 
             catch (err) { console.error(err); return null; }
         }
     }
 
-    // ✨ [1] Google Gemini 전용 API 직접 호출
     async function callGeminiAPI(prompt, isJson, s) {
-        if (!s.apiKey) {
-            toastr.error("Gemini API Key가 입력되지 않았습니다."); return null;
-        }
+        if (!s.apiKey) { toastr.error("Gemini API Key가 없습니다."); return null; }
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${s.geminiModel}:generateContent?key=${s.apiKey}`;
         const payload = {
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: { temperature: 0.7, maxOutputTokens: 200 }
         };
-        // 완벽한 JSON 응답 강제 (1.5 이상 지원)
         if (isJson) payload.generationConfig.responseMimeType = "application/json";
 
         try {
             const res = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
             });
             if (!res.ok) throw new Error(`Gemini 오류 ${res.status}`);
             const data = await res.json();
             return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
-        } catch (err) {
-            console.error(`[${EXTENSION_NAME}] Gemini 실패:`, err);
-            toastr.error("Gemini 호출 실패. API 키를 확인하세요."); return null;
-        }
+        } catch (err) { console.error(err); return null; }
     }
 
-    // ✨ [2] 타사 커스텀 API (OpenAI 규격) 호출
-    async function callCustomOpenAI(prompt, s) {
-        if (!s.customUrl || !s.customModel || !s.apiKey) {
-            toastr.error("커스텀 API 설정(URL, 모델명, 키)을 모두 입력해주세요."); return null;
-        }
+    async function callCustomOpenAI(prompt, isJson, s) {
+        if (!s.customUrl || !s.customModel || !s.apiKey) return null;
         const payload = {
             model: s.customModel,
             messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-            max_tokens: 200
+            temperature: 0.7, max_tokens: 200
         };
-        // JSON 응답 포맷 (OpenAI 지원 모델 한정)
         if (isJson) payload.response_format = { type: "json_object" };
 
         try {
             const res = await fetch(s.customUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${s.apiKey}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s.apiKey}` },
                 body: JSON.stringify(payload)
             });
             if (!res.ok) throw new Error(`API 오류 ${res.status}`);
             const data = await res.json();
             return data.choices?.[0]?.message?.content || null;
-        } catch (err) {
-            console.error(`[${EXTENSION_NAME}] 타사 API 실패:`, err);
-            toastr.error("타사 API 호출 실패. URL과 키를 확인하세요."); return null;
-        }
+        } catch (err) { console.error(err); return null; }
     }
 
-    // ===== 메시지 수신 =====
     async function onMessageReceived(messageIdOrData) {
         const s = getSettings();
         if (!s?.enabled) return;
@@ -254,13 +217,9 @@
         if (!lastMsg || lastMsg.is_user) return;
 
         let messageId;
-        if (typeof messageIdOrData === 'number') {
-            messageId = messageIdOrData;
-        } else if (typeof messageIdOrData === 'object' && messageIdOrData !== null) {
-            messageId = messageIdOrData.mesid ?? messageIdOrData.id ?? (messages.length - 1);
-        } else {
-            messageId = messages.length - 1;
-        }
+        if (typeof messageIdOrData === 'number') { messageId = messageIdOrData; }
+        else if (typeof messageIdOrData === 'object' && messageIdOrData !== null) { messageId = messageIdOrData.mesid ?? messageIdOrData.id ?? (messages.length - 1); }
+        else { messageId = messages.length - 1; }
 
         const text = lastMsg.mes || '';
         const triggered = await checkTrigger(text, s.triggerSensitivity, context);
@@ -281,34 +240,24 @@
         }
     }
 
-    // ===== 트리거 체크 =====
     async function checkTrigger(text, sensitivity, context) {
         if (sensitivity === 'high') return await aiTriggerCheck(text, context);
-        const count = TRIGGER_PATTERNS.filter(p => text.includes(p)).length;
+        const count = TRIGGER_PATTERNS.filter(p => text.toLowerCase().includes(p.toLowerCase())).length;
         return sensitivity === 'low' ? count >= 2 : count >= 1;
     }
 
-    // ✨ AI 트리거 체크
     async function aiTriggerCheck(text, context) {
         try {
             const charName = context.name2 || '캐릭터';
             const prompt = `다음은 "${charName}"의 대화 메시지야:\n"${text}"\n이 메시지가 음악 카드를 띄울 만한 감성적인 상황이면 "yes", 아니면 "no"만 답해.`;
-            
             const res = await getAiResponse(prompt, false);
             return res?.toLowerCase().includes('yes') ?? false;
-        } catch {
-            return false;
-        }
+        } catch { return false; }
     }
 
-    // ✨ AI 음악 추천
     async function requestMusic(text, context) {
         const charName = context.name2 || '캐릭터';
-        const recentChat = (context.chat || [])
-            .slice(-6)
-            .map(m => `${m.is_user ? (context.name1 || 'User') : charName}: ${m.mes}`)
-            .join('\n');
-
+        const recentChat = (context.chat || []).slice(-6).map(m => `${m.is_user ? (context.name1 || 'User') : charName}: ${m.mes}`).join('\n');
         const prompt = `다음은 "${charName}"와의 최근 대화야.
 ---
 ${recentChat}
@@ -320,94 +269,74 @@ ${recentChat}
         try {
             const res = await getAiResponse(prompt, true);
             if (!res) return null;
-            
             const clean = res.replace(/```json|```/g, '').trim();
             const s = clean.indexOf('{');
             const e = clean.lastIndexOf('}');
             if (s === -1 || e === -1) return null;
             return JSON.parse(clean.slice(s, e + 1));
-        } catch (err) {
-            console.warn(`[${EXTENSION_NAME}] 파싱 실패:`, err);
-            return null;
-        }
+        } catch (err) { return null; }
     }
 
-    // ===== YouTube 검색 =====
     async function searchYouTube(musicInfo, apiKey) {
         const q = encodeURIComponent(`${musicInfo.title} ${musicInfo.artist}`);
-        const fallback = {
-            videoId: null,
-            watchUrl: `https://www.youtube.com/results?search_query=${q}`,
-            thumbnail: null,
-        };
+        const fallback = { videoId: null, watchUrl: `https://www.youtube.com/results?search_query=${q}`, thumbnail: null };
         if (!apiKey) return fallback;
-
         try {
-            const res = await fetch(
-                `https://www.googleapis.com/youtube/v3/search` +
-                `?part=snippet&q=${q}+official&type=video&maxResults=1&key=${apiKey}`
-            );
+            const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${q}+official&type=video&maxResults=1&key=${apiKey}`);
             const data = await res.json();
             if (!data.items?.length) return fallback;
             const item = data.items[0];
-            return {
-                videoId: item.id.videoId,
-                watchUrl: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-                thumbnail: item.snippet.thumbnails?.medium?.url || null,
-            };
-        } catch {
-            return fallback;
-        }
+            return { videoId: item.id.videoId, watchUrl: `https://www.youtube.com/watch?v=${item.id.videoId}`, thumbnail: item.snippet.thumbnails?.medium?.url || null };
+        } catch { return fallback; }
     }
 
-    // ===== 전역: 카드 닫기 =====
-    window._cmpClose = function (cardId) {
-        $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); });
-    };
+    window._cmpClose = function (cardId) { $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); };
+    window._cmpOpen = function (url) { window.open(url, '_blank'); };
 
-    // ===== 전역: YouTube 새 탭으로 열기 =====
-    window._cmpOpen = function (url) {
-        window.open(url, '_blank');
-    };
-
-    // ===== 카드 렌더링 =====
     function renderCard(musicInfo, videoInfo, messageId, context, style) {
         const charName = context.name2 || '캐릭터';
         const cardId   = `cmp-card-${Date.now()}`;
         const watchUrl = videoInfo?.watchUrl || '#';
+        const thumb = videoInfo?.thumbnail;
 
         const closeBtn = `<button class="music-card-close" onclick="window._cmpClose('${cardId}')" title="닫기">✕</button>`;
-        const playBtn  = `<button class="music-card-play"  onclick="window._cmpOpen('${escapeHtml(watchUrl)}')" title="YouTube에서 열기">▶</button>`;
+        const playBtn  = `<button class="music-card-play" onclick="window._cmpOpen('${escapeHtml(watchUrl)}')" title="YouTube에서 열기">▶</button>`;
 
         let card = '';
 
         if (style === 'text') {
+            // ✨ 3. 옛날 아이팟 전광판(Marquee) 디자인
+            const reasonText = musicInfo.reason ? ` <span style="opacity:0.7; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
             card = `
             <div class="music-card-wrapper" id="${cardId}">
-                <div class="music-card-text">
-                    <span class="music-card-text-icon">🎵</span>
-                    <span class="music-card-text-info">
-                        <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)}
-                        ${musicInfo.reason ? `<span class="music-card-text-reason">(${escapeHtml(musicInfo.reason)})</span>` : ''}
-                    </span>
+                <div class="music-card-ipod">
+                    <div class="ipod-icon">🎵</div>
+                    <div class="ipod-screen">
+                        <marquee scrollamount="3" scrolldelay="0" class="ipod-marquee">
+                            <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
+                        </marquee>
+                    </div>
                     ${playBtn}
                     ${closeBtn}
                 </div>
             </div>`;
 
         } else if (style === 'mini') {
-            const thumb = videoInfo?.thumbnail;
-            const thumbHtml = thumb
-                ? `<img class="music-card-mini-thumb" src="${escapeHtml(thumb)}" />`
-                : '<span class="music-card-mini-emoji">🎵</span>';
+            // ✨ 2. 빙글빙글 도는 LP판 디자인
+            const thumbHtml = thumb 
+                ? `<img class="lp-cover" src="${escapeHtml(thumb)}" />` 
+                : `<div class="lp-cover placeholder">🎵</div>`;
 
             card = `
             <div class="music-card-wrapper" id="${cardId}">
-                <div class="music-card-mini">
-                    ${thumbHtml}
-                    <div class="music-card-mini-info">
-                        <div class="music-card-mini-title">${escapeHtml(musicInfo.title)}</div>
-                        <div class="music-card-mini-artist">${escapeHtml(musicInfo.artist)}</div>
+                <div class="music-card-lp">
+                    <div class="lp-container">
+                        ${thumbHtml}
+                        <div class="lp-hole"></div>
+                    </div>
+                    <div class="lp-info">
+                        <div class="lp-title">${escapeHtml(musicInfo.title)}</div>
+                        <div class="lp-artist">${escapeHtml(musicInfo.artist)}</div>
                     </div>
                     ${playBtn}
                     ${closeBtn}
@@ -415,12 +344,8 @@ ${recentChat}
             </div>`;
 
         } else {
-            // ── 풀 카드 ──
-            const thumb = videoInfo?.thumbnail;
-            const thumbHtml = thumb
-                ? `<img class="music-card-thumbnail" src="${escapeHtml(thumb)}" alt="album" />`
-                : `<div class="music-card-thumbnail-placeholder">🎵</div>`;
-
+            // 1. 기존 예쁜 풀카드
+            const thumbHtml = thumb ? `<img class="music-card-thumbnail" src="${escapeHtml(thumb)}" />` : `<div class="music-card-thumbnail-placeholder">🎵</div>`;
             card = `
             <div class="music-card-wrapper" id="${cardId}">
                 <div class="music-card">
@@ -437,31 +362,19 @@ ${recentChat}
             </div>`;
         }
 
-        // DOM 삽입
         const $mesText = $(`#chat .mes[mesid="${messageId}"] .mes_text`);
         const $mes     = $(`#chat .mes[mesid="${messageId}"]`);
-
-        if ($mesText.length)     $mesText.after(card);
-        else if ($mes.length)    $mes.append(card);
-        else {
-            const $last = $('#chat .mes:last .mes_text');
-            if ($last.length)    $last.after(card);
-            else                 $('#chat').append(card);
-        }
-
+        if ($mesText.length) $mesText.after(card);
+        else if ($mes.length) $mes.append(card);
+        else { const $last = $('#chat .mes:last .mes_text'); if ($last.length) $last.after(card); else $('#chat').append(card); }
+        
         const chatEl = document.getElementById('chat');
         if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
     }
 
     function escapeHtml(str) {
         if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
-
     initExtension();
-
 })();
