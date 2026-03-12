@@ -1,6 +1,6 @@
 /**
- * Character Music Player Extension for SillyTavern
- * v1.7 — 하단 플로팅 고정 & 4가지 디자인 모드 (에어팟, 레트로 포함)
+ * Character Music 시그니처 Player
+ * v1.8 — 신청곡 최우선 반영 & 접기/펴기(최소화) 기능 추가
  */
 
 (async function () {
@@ -61,7 +61,6 @@
         const settingsHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
         $('#extensions_settings').append(settingsHtml);
 
-        // ✨ 4번 레트로 옵션 동적 추가 및 이름 직관적 변경
         if ($('#cmp-cardstyle option[value="retro"]').length === 0) {
             $('#cmp-cardstyle').append('<option value="retro">4. 레트로 (앨범아트 안 보임)</option>');
         }
@@ -72,14 +71,12 @@
         const aiUI = `
             <div class="flex-container flexFlowColumn" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--SmartThemeBorderColor);">
                 <div style="margin-bottom: 10px;"><b>🤖 음악 추천용 전용 AI 설정</b></div>
-                
                 <label for="cmp-api-provider"><b>연결할 API 선택</b></label>
                 <select id="cmp-api-provider" class="text_pole" style="margin-bottom: 15px;">
                     <option value="sillytavern">실리태번 메인 API (자동)</option>
                     <option value="gemini">Google Gemini API</option>
                     <option value="custom">타사 API (OpenRouter, OpenAI 등)</option>
                 </select>
-
                 <div id="cmp-gemini-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; border-left: 3px solid var(--SmartThemeBlurTintColor);">
                     <label for="cmp-gemini-model">Gemini 모델</label>
                     <select id="cmp-gemini-model" class="text_pole" style="margin-bottom: 10px;">
@@ -90,14 +87,12 @@
                         <option value="gemini-3.0-flash-latest">Gemini 3.0 Flash</option>
                     </select>
                 </div>
-
                 <div id="cmp-custom-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; border-left: 3px solid var(--SmartThemeBlurTintColor);">
                     <label for="cmp-custom-url">API 엔드포인트 URL</label>
                     <input id="cmp-custom-url" type="text" class="text_pole" placeholder="예: https://openrouter.ai/api/v1/chat/completions" style="margin-bottom: 10px;">
                     <label for="cmp-custom-model">모델명</label>
                     <input id="cmp-custom-model" type="text" class="text_pole" placeholder="예: gpt-4o-mini" style="margin-bottom: 10px;">
                 </div>
-
                 <div id="cmp-key-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; margin-top: 5px;">
                     <label for="cmp-api-key">API Key</label>
                     <input id="cmp-api-key" type="password" class="text_pole" placeholder="해당 플랫폼의 발급 키 입력">
@@ -121,15 +116,9 @@
 
         function updateAiUi() {
             const provider = $('#cmp-api-provider').val();
-            if (provider === 'sillytavern') {
-                $('#cmp-gemini-wrap, #cmp-custom-wrap, #cmp-key-wrap').slideUp(150);
-            } else if (provider === 'gemini') {
-                $('#cmp-gemini-wrap, #cmp-key-wrap').slideDown(150);
-                $('#cmp-custom-wrap').hide();
-            } else if (provider === 'custom') {
-                $('#cmp-custom-wrap, #cmp-key-wrap').slideDown(150);
-                $('#cmp-gemini-wrap').hide();
-            }
+            if (provider === 'sillytavern') { $('#cmp-gemini-wrap, #cmp-custom-wrap, #cmp-key-wrap').slideUp(150); }
+            else if (provider === 'gemini') { $('#cmp-gemini-wrap, #cmp-key-wrap').slideDown(150); $('#cmp-custom-wrap').hide(); }
+            else if (provider === 'custom') { $('#cmp-custom-wrap, #cmp-key-wrap').slideDown(150); $('#cmp-gemini-wrap').hide(); }
         }
         updateAiUi(); 
 
@@ -138,15 +127,19 @@
         $('#cmp-cooldown').on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
         $('#cmp-sensitivity').on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
         $('#cmp-cardstyle').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
-        
         $('#cmp-api-provider').on('change', function () { getSettings().apiProvider = this.value; saveSettingsDebounced(); updateAiUi(); });
         $('#cmp-gemini-model').on('change', function () { getSettings().geminiModel = this.value; saveSettingsDebounced(); });
         $('#cmp-custom-url').on('input', function () { getSettings().customUrl = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-custom-model').on('input', function () { getSettings().customModel = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
 
+        // 전역 최소화 복구 버튼 삽입
+        if ($('#cmp-minimized-btn').length === 0) {
+            $('body').append('<div id="cmp-minimized-btn" onclick="window._cmpMaximize()">🎵 음악 펴기</div>');
+        }
+
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.7 (하단 플로팅 & 레트로 추가) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (신청곡 우선 & 접기/펴기) ✅`);
     }
 
     async function getAiResponse(prompt, isJson = false) {
@@ -155,7 +148,7 @@
         else if (s.apiProvider === 'custom') return await callCustomOpenAI(prompt, isJson, s);
         else {
             const { generateQuietPrompt } = SillyTavern.getContext();
-            try { return await generateQuietPrompt(prompt); } catch (err) { return null; }
+            try { return await generateQuietPrompt(prompt); } catch { return null; }
         }
     }
 
@@ -231,10 +224,20 @@
         } catch { return false; }
     }
 
+    // ✨ 신청곡 우선 반영 지침이 추가된 프롬프트
     async function requestMusic(text, context) {
         const charName = context.name2 || '캐릭터';
         const recentChat = (context.chat || []).slice(-6).map(m => `${m.is_user ? (context.name1 || 'User') : charName}: ${m.mes}`).join('\n');
-        const prompt = `다음은 "${charName}"와의 최근 대화야.\n---\n${recentChat}\n---\n이 분위기에서 "${charName}"가 듣고 있을 법한 실제 존재하는 곡 1개를 추천해줘.\n반드시 아래 JSON 형식으로만 답해.\n{"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
+        
+        const prompt = `다음은 "${charName}"와의 최근 대화야.
+---
+${recentChat}
+---
+[중요 지침]
+1. 만약 대화 중에 유저나 캐릭터가 **특정 곡 제목이나 아티스트**를 명시하며 듣자고 했다면, 반드시 그 곡을 찾아줘.
+2. 특정 곡 언급이 없다면, 현재 분위기와 감정에 맞는 실제 존재하는 곡 1개를 알아서 추천해.
+반드시 아래 JSON 형식으로만 답해. 다른 텍스트 없이.
+{"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
 
         try {
             const res = await getAiResponse(prompt, true);
@@ -260,23 +263,44 @@
         } catch { return fallback; }
     }
 
-    window._cmpClose = function (cardId) { $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); };
+    // ✨ 전역 함수: 닫기, 최소화, 최대화, 열기
+    window._cmpClose = function (cardId) { 
+        $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); 
+        $('#cmp-minimized-btn').hide(); // 닫을 땐 최소화 버튼도 숨김
+    };
+    
+    window._cmpMinimize = function () {
+        $('#cmp-floating-container').fadeOut(200, function() {
+            $('#cmp-minimized-btn').fadeIn(200);
+        });
+    };
+
+    window._cmpMaximize = function () {
+        $('#cmp-minimized-btn').fadeOut(200, function() {
+            $('#cmp-floating-container').fadeIn(200);
+        });
+    };
+
     window._cmpOpen = function (url) { window.open(url, '_blank'); };
 
-    // ✨ 렌더링 방식 완전히 교체 (하단 고정 컨테이너)
+    // 렌더링 방식 (버튼 그룹에 최소화 버튼 추가)
     function renderCard(musicInfo, videoInfo, context, style) {
         const charName = context.name2 || '캐릭터';
         const cardId   = `cmp-card-${Date.now()}`;
         const watchUrl = videoInfo?.watchUrl || '#';
         const thumb = videoInfo?.thumbnail;
 
+        // ✨ 최소화 버튼 추가
+        const minBtn   = `<button class="music-card-minimize" onclick="window._cmpMinimize()" title="최소화">−</button>`;
         const closeBtn = `<button class="music-card-close" onclick="window._cmpClose('${cardId}')" title="닫기">✕</button>`;
         const playBtn  = `<button class="music-card-play" onclick="window._cmpOpen('${escapeHtml(watchUrl)}')" title="YouTube에서 열기">▶</button>`;
+        
+        // 우측 컨트롤 그룹 묶기
+        const controls = `<div class="music-card-controls">${playBtn}${minBtn}${closeBtn}</div>`;
 
         let card = '';
 
         if (style === 'retro') {
-            // ✨ 4. 부활한 레트로 아이팟 전광판 디자인
             const reasonText = musicInfo.reason ? ` <span style="opacity:0.7; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
             card = `
             <div class="music-card-wrapper" id="${cardId}">
@@ -287,12 +311,10 @@
                             <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
                         </marquee>
                     </div>
-                    ${playBtn}
-                    ${closeBtn}
+                    ${controls}
                 </div>
             </div>`;
         } else if (style === 'text') {
-            // 3. 에어팟 위젯 
             const reasonText = musicInfo.reason ? ` <span style="opacity:0.6; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
             card = `
             <div class="music-card-wrapper" id="${cardId}">
@@ -303,30 +325,23 @@
                             <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
                         </marquee>
                     </div>
-                    ${playBtn}
-                    ${closeBtn}
+                    ${controls}
                 </div>
             </div>`;
         } else if (style === 'mini') {
-            // 2. LP판 
             const thumbHtml = thumb ? `<img class="lp-cover" src="${escapeHtml(thumb)}" />` : `<div class="lp-cover placeholder">🎵</div>`;
             card = `
             <div class="music-card-wrapper" id="${cardId}">
                 <div class="music-card-lp">
-                    <div class="lp-container">
-                        ${thumbHtml}
-                        <div class="lp-hole"></div>
-                    </div>
+                    <div class="lp-container">${thumbHtml}<div class="lp-hole"></div></div>
                     <div class="lp-info">
                         <div class="lp-title">${escapeHtml(musicInfo.title)}</div>
                         <div class="lp-artist">${escapeHtml(musicInfo.artist)}</div>
                     </div>
-                    ${playBtn}
-                    ${closeBtn}
+                    ${controls}
                 </div>
             </div>`;
         } else {
-            // 1. 풀카드
             const thumbHtml = thumb ? `<img class="music-card-thumbnail" src="${escapeHtml(thumb)}" />` : `<div class="music-card-thumbnail-placeholder">🎵</div>`;
             card = `
             <div class="music-card-wrapper" id="${cardId}">
@@ -338,19 +353,18 @@
                         <div class="music-card-artist">${escapeHtml(musicInfo.artist)}</div>
                         ${musicInfo.reason ? `<div class="music-card-artist" style="font-style:italic;opacity:0.55;margin-top:2px">${escapeHtml(musicInfo.reason)}</div>` : ''}
                     </div>
-                    ${playBtn}
-                    ${closeBtn}
+                    ${controls}
                 </div>
             </div>`;
         }
 
-        // ✨ 화면 하단 전용 컨테이너 생성 및 삽입 (채팅창 스크롤과 무관하게 입력창 위 고정)
         if ($('#cmp-floating-container').length === 0) {
             $('body').append('<div id="cmp-floating-container"></div>');
         }
         
-        // 새 노래가 켜지면 이전 노래는 지우고 새로 갈아끼웁니다
-        $('#cmp-floating-container').html(card);
+        // 카드가 갱신되면 미니마이즈 버튼은 숨기고 플로팅 컨테이너를 보여줌
+        $('#cmp-minimized-btn').hide();
+        $('#cmp-floating-container').html(card).show();
     }
 
     function escapeHtml(str) {
