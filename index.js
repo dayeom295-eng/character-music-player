@@ -1,6 +1,6 @@
 /**
  * Character Music Player Extension for SillyTavern
- * v1.6 — 최종 디자인 적용 (캐릭터 말풍선 내부 삽입, 에어팟 UI, 드롭다운 이름 직관화)
+ * v1.7 — 하단 플로팅 고정 & 4가지 디자인 모드 (에어팟, 레트로 포함)
  */
 
 (async function () {
@@ -61,7 +61,10 @@
         const settingsHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
         $('#extensions_settings').append(settingsHtml);
 
-        // ✨ 1. 기존 드롭다운 메뉴 텍스트를 직관적으로 강제 변경 (settings.html 수정 불필요)
+        // ✨ 4번 레트로 옵션 동적 추가 및 이름 직관적 변경
+        if ($('#cmp-cardstyle option[value="retro"]').length === 0) {
+            $('#cmp-cardstyle').append('<option value="retro">4. 레트로 (앨범아트 안 보임)</option>');
+        }
         $('#cmp-cardstyle option[value="full"]').text('1. 풀카드 (앨범아트 보임)');
         $('#cmp-cardstyle option[value="mini"]').text('2. LP판 (앨범아트 보임)');
         $('#cmp-cardstyle option[value="text"]').text('3. 에어팟 (앨범아트 안 보임)');
@@ -89,7 +92,7 @@
                 </div>
 
                 <div id="cmp-custom-wrap" class="flex-container flexFlowColumn" style="display: none; padding-left: 10px; border-left: 3px solid var(--SmartThemeBlurTintColor);">
-                    <label for="cmp-custom-url">API 엔드포인트 URL (Chat Completions)</label>
+                    <label for="cmp-custom-url">API 엔드포인트 URL</label>
                     <input id="cmp-custom-url" type="text" class="text_pole" placeholder="예: https://openrouter.ai/api/v1/chat/completions" style="margin-bottom: 10px;">
                     <label for="cmp-custom-model">모델명</label>
                     <input id="cmp-custom-model" type="text" class="text_pole" placeholder="예: gpt-4o-mini" style="margin-bottom: 10px;">
@@ -143,60 +146,40 @@
         $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.6 (캐릭터 말풍선 내부 삽입 & 에어팟 UI) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.7 (하단 플로팅 & 레트로 추가) ✅`);
     }
 
     async function getAiResponse(prompt, isJson = false) {
         const s = getSettings();
-        if (s.apiProvider === 'gemini') {
-            return await callGeminiAPI(prompt, isJson, s);
-        } else if (s.apiProvider === 'custom') {
-            return await callCustomOpenAI(prompt, isJson, s);
-        } else {
+        if (s.apiProvider === 'gemini') return await callGeminiAPI(prompt, isJson, s);
+        else if (s.apiProvider === 'custom') return await callCustomOpenAI(prompt, isJson, s);
+        else {
             const { generateQuietPrompt } = SillyTavern.getContext();
-            try { return await generateQuietPrompt(prompt); } 
-            catch (err) { console.error(err); return null; }
+            try { return await generateQuietPrompt(prompt); } catch (err) { return null; }
         }
     }
 
     async function callGeminiAPI(prompt, isJson, s) {
-        if (!s.apiKey) { toastr.error("Gemini API Key가 없습니다."); return null; }
+        if (!s.apiKey) return null;
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${s.geminiModel}:generateContent?key=${s.apiKey}`;
-        const payload = {
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 200 }
-        };
+        const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 200 } };
         if (isJson) payload.generationConfig.responseMimeType = "application/json";
-
         try {
-            const res = await fetch(apiUrl, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error(`Gemini 오류 ${res.status}`);
+            const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const data = await res.json();
             return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
-        } catch (err) { console.error(err); return null; }
+        } catch { return null; }
     }
 
     async function callCustomOpenAI(prompt, isJson, s) {
         if (!s.customUrl || !s.customModel || !s.apiKey) return null;
-        const payload = {
-            model: s.customModel,
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7, max_tokens: 200
-        };
+        const payload = { model: s.customModel, messages: [{ role: "user", content: prompt }], temperature: 0.7, max_tokens: 200 };
         if (isJson) payload.response_format = { type: "json_object" };
-
         try {
-            const res = await fetch(s.customUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s.apiKey}` },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error(`API 오류 ${res.status}`);
+            const res = await fetch(s.customUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s.apiKey}` }, body: JSON.stringify(payload) });
             const data = await res.json();
             return data.choices?.[0]?.message?.content || null;
-        } catch (err) { console.error(err); return null; }
+        } catch { return null; }
     }
 
     async function onMessageReceived(messageIdOrData) {
@@ -214,11 +197,6 @@
         const lastMsg = messages[messages.length - 1];
         if (!lastMsg || lastMsg.is_user) return;
 
-        let messageId;
-        if (typeof messageIdOrData === 'number') { messageId = messageIdOrData; }
-        else if (typeof messageIdOrData === 'object' && messageIdOrData !== null) { messageId = messageIdOrData.mesid ?? messageIdOrData.id ?? (messages.length - 1); }
-        else { messageId = messages.length - 1; }
-
         const text = lastMsg.mes || '';
         const triggered = await checkTrigger(text, s.triggerSensitivity, context);
         if (!triggered) return;
@@ -230,7 +208,7 @@
             const musicInfo = await requestMusic(text, context);
             if (!musicInfo) return;
             const videoInfo = await searchYouTube(musicInfo, s.youtubeApiKey);
-            renderCard(musicInfo, videoInfo, messageId, context, s.cardStyle || 'full');
+            renderCard(musicInfo, videoInfo, context, s.cardStyle || 'full');
         } catch (err) {
             console.error(`[${EXTENSION_NAME}] 오류:`, err);
         } finally {
@@ -256,13 +234,7 @@
     async function requestMusic(text, context) {
         const charName = context.name2 || '캐릭터';
         const recentChat = (context.chat || []).slice(-6).map(m => `${m.is_user ? (context.name1 || 'User') : charName}: ${m.mes}`).join('\n');
-        const prompt = `다음은 "${charName}"와의 최근 대화야.
----
-${recentChat}
----
-이 분위기에서 "${charName}"가 듣고 있을 법한 실제 존재하는 곡 1개를 추천해줘.
-반드시 아래 JSON 형식으로만 답해. 다른 텍스트 없이.
-{"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
+        const prompt = `다음은 "${charName}"와의 최근 대화야.\n---\n${recentChat}\n---\n이 분위기에서 "${charName}"가 듣고 있을 법한 실제 존재하는 곡 1개를 추천해줘.\n반드시 아래 JSON 형식으로만 답해.\n{"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
 
         try {
             const res = await getAiResponse(prompt, true);
@@ -272,7 +244,7 @@ ${recentChat}
             const e = clean.lastIndexOf('}');
             if (s === -1 || e === -1) return null;
             return JSON.parse(clean.slice(s, e + 1));
-        } catch (err) { return null; }
+        } catch { return null; }
     }
 
     async function searchYouTube(musicInfo, apiKey) {
@@ -291,7 +263,8 @@ ${recentChat}
     window._cmpClose = function (cardId) { $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); };
     window._cmpOpen = function (url) { window.open(url, '_blank'); };
 
-    function renderCard(musicInfo, videoInfo, messageId, context, style) {
+    // ✨ 렌더링 방식 완전히 교체 (하단 고정 컨테이너)
+    function renderCard(musicInfo, videoInfo, context, style) {
         const charName = context.name2 || '캐릭터';
         const cardId   = `cmp-card-${Date.now()}`;
         const watchUrl = videoInfo?.watchUrl || '#';
@@ -302,8 +275,24 @@ ${recentChat}
 
         let card = '';
 
-        if (style === 'text') {
-            // ✨ 3. 에어팟 위젯 감성 (화이트/블러, 모서리 둥금, 🎧 아이콘)
+        if (style === 'retro') {
+            // ✨ 4. 부활한 레트로 아이팟 전광판 디자인
+            const reasonText = musicInfo.reason ? ` <span style="opacity:0.7; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
+            card = `
+            <div class="music-card-wrapper" id="${cardId}">
+                <div class="music-card-ipod">
+                    <div class="ipod-icon">🎵</div>
+                    <div class="ipod-screen">
+                        <marquee scrollamount="3" scrolldelay="0" class="ipod-marquee">
+                            <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
+                        </marquee>
+                    </div>
+                    ${playBtn}
+                    ${closeBtn}
+                </div>
+            </div>`;
+        } else if (style === 'text') {
+            // 3. 에어팟 위젯 
             const reasonText = musicInfo.reason ? ` <span style="opacity:0.6; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
             card = `
             <div class="music-card-wrapper" id="${cardId}">
@@ -318,13 +307,9 @@ ${recentChat}
                     ${closeBtn}
                 </div>
             </div>`;
-
         } else if (style === 'mini') {
-            // 2. LP판 디자인
-            const thumbHtml = thumb 
-                ? `<img class="lp-cover" src="${escapeHtml(thumb)}" />` 
-                : `<div class="lp-cover placeholder">🎵</div>`;
-
+            // 2. LP판 
+            const thumbHtml = thumb ? `<img class="lp-cover" src="${escapeHtml(thumb)}" />` : `<div class="lp-cover placeholder">🎵</div>`;
             card = `
             <div class="music-card-wrapper" id="${cardId}">
                 <div class="music-card-lp">
@@ -340,9 +325,8 @@ ${recentChat}
                     ${closeBtn}
                 </div>
             </div>`;
-
         } else {
-            // 1. 기존 예쁜 풀카드
+            // 1. 풀카드
             const thumbHtml = thumb ? `<img class="music-card-thumbnail" src="${escapeHtml(thumb)}" />` : `<div class="music-card-thumbnail-placeholder">🎵</div>`;
             card = `
             <div class="music-card-wrapper" id="${cardId}">
@@ -360,22 +344,13 @@ ${recentChat}
             </div>`;
         }
 
-        // ✨ 2. 위치 수정: 캐릭터 말풍선 텍스트(mes_text) 안쪽 맨 밑에 완벽하게 삽입
-        const $mesText = $(`#chat .mes[mesid="${messageId}"] .mes_text`);
-        const $mes     = $(`#chat .mes[mesid="${messageId}"]`);
-        
-        if ($mesText.length) {
-            $mesText.append(card);
-        } else if ($mes.length) {
-            $mes.append(card);
-        } else { 
-            const $last = $('#chat .mes:last .mes_text'); 
-            if ($last.length) $last.append(card); 
-            else $('#chat').append(card); 
+        // ✨ 화면 하단 전용 컨테이너 생성 및 삽입 (채팅창 스크롤과 무관하게 입력창 위 고정)
+        if ($('#cmp-floating-container').length === 0) {
+            $('body').append('<div id="cmp-floating-container"></div>');
         }
         
-        const chatEl = document.getElementById('chat');
-        if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+        // 새 노래가 켜지면 이전 노래는 지우고 새로 갈아끼웁니다
+        $('#cmp-floating-container').html(card);
     }
 
     function escapeHtml(str) {
