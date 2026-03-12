@@ -262,87 +262,43 @@ ${recentChat}
         } catch { return fallback; }
     }
 
-    // 렌더링 방식 (모바일 호환성을 위해 버튼에서 onclick 속성 제거하고 data 속성으로 변경)
+  // 렌더링 방식 (모바일 호환성을 위해 버튼에서 onclick 속성 제거하고 data 속성으로 변경)
     function renderCard(musicInfo, videoInfo, context, style) {
         const charName = context.name2 || '캐릭터';
         const cardId   = `cmp-card-${Date.now()}`;
         const watchUrl = videoInfo?.watchUrl || '#';
         const thumb = videoInfo?.thumbnail;
 
-        // ✨ 최소화 버튼 추가 (모바일 호환)
         const minBtn   = `<button class="music-card-minimize" title="최소화">−</button>`;
         const closeBtn = `<button class="music-card-close" data-id="${cardId}" title="닫기">✕</button>`;
         const playBtn  = `<button class="music-card-play" data-url="${escapeHtml(watchUrl)}" title="YouTube에서 열기">▶</button>`;
         
-        // 우측 컨트롤 그룹 묶기
         const controls = `<div class="music-card-controls">${playBtn}${minBtn}${closeBtn}</div>`;
-
         let card = '';
 
         if (style === 'retro') {
             const reasonText = musicInfo.reason ? ` <span style="opacity:0.7; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
-            card = `
-            <div class="music-card-wrapper" id="${cardId}">
-                <div class="music-card-ipod">
-                    <div class="ipod-icon">🎵</div>
-                    <div class="ipod-screen">
-                        <marquee scrollamount="3" scrolldelay="0" class="ipod-marquee">
-                            <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
-                        </marquee>
-                    </div>
-                    ${controls}
-                </div>
-            </div>`;
+            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card-ipod"><div class="ipod-icon">🎵</div><div class="ipod-screen"><marquee scrollamount="3" scrolldelay="0" class="ipod-marquee"><b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}</marquee></div>${controls}</div></div>`;
         } else if (style === 'text') {
             const reasonText = musicInfo.reason ? ` <span style="opacity:0.6; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
-            card = `
-            <div class="music-card-wrapper" id="${cardId}">
-                <div class="music-card-airpods">
-                    <div class="airpods-icon">🎧</div>
-                    <div class="airpods-screen">
-                        <marquee scrollamount="3" scrolldelay="0" class="airpods-marquee">
-                            <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
-                        </marquee>
-                    </div>
-                    ${controls}
-                </div>
-            </div>`;
+            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card-airpods"><div class="airpods-icon">🎧</div><div class="airpods-screen"><marquee scrollamount="3" scrolldelay="0" class="airpods-marquee"><b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}</marquee></div>${controls}</div></div>`;
         } else if (style === 'mini') {
             const thumbHtml = thumb ? `<img class="lp-cover" src="${escapeHtml(thumb)}" />` : `<div class="lp-cover placeholder">🎵</div>`;
-            card = `
-            <div class="music-card-wrapper" id="${cardId}">
-                <div class="music-card-lp">
-                    <div class="lp-container">${thumbHtml}<div class="lp-hole"></div></div>
-                    <div class="lp-info">
-                        <div class="lp-title">${escapeHtml(musicInfo.title)}</div>
-                        <div class="lp-artist">${escapeHtml(musicInfo.artist)}</div>
-                    </div>
-                    ${controls}
-                </div>
-            </div>`;
+            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card-lp"><div class="lp-container">${thumbHtml}<div class="lp-hole"></div></div><div class="lp-info"><div class="lp-title">${escapeHtml(musicInfo.title)}</div><div class="lp-artist">${escapeHtml(musicInfo.artist)}</div></div>${controls}</div></div>`;
         } else {
             const thumbHtml = thumb ? `<img class="music-card-thumbnail" src="${escapeHtml(thumb)}" />` : `<div class="music-card-thumbnail-placeholder">🎵</div>`;
-            card = `
-            <div class="music-card-wrapper" id="${cardId}">
-                <div class="music-card">
-                    ${thumbHtml}
-                    <div class="music-card-info">
-                        <div class="music-card-label">${escapeHtml(charName)} 듣는 중</div>
-                        <div class="music-card-title">${escapeHtml(musicInfo.title)}</div>
-                        <div class="music-card-artist">${escapeHtml(musicInfo.artist)}</div>
-                        ${musicInfo.reason ? `<div class="music-card-artist" style="font-style:italic;opacity:0.55;margin-top:2px">${escapeHtml(musicInfo.reason)}</div>` : ''}
-                    </div>
-                    ${controls}
-                </div>
-            </div>`;
+            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card">${thumbHtml}<div class="music-card-info"><div class="music-card-label">${escapeHtml(charName)} 듣는 중</div><div class="music-card-title">${escapeHtml(musicInfo.title)}</div><div class="music-card-artist">${escapeHtml(musicInfo.artist)}</div>${musicInfo.reason ? `<div class="music-card-artist" style="font-style:italic;opacity:0.55;margin-top:2px">${escapeHtml(musicInfo.reason)}</div>` : ''}</div>${controls}</div></div>`;
         }
 
+        // 컨테이너가 없으면 강제 생성 후 body 끝에 붙임
         if ($('#cmp-floating-container').length === 0) {
-            $('body').append('<div id="cmp-floating-container"></div>');
+            $(document.body).append('<div id="cmp-floating-container" style="display:none;"></div>');
         }
         
         $('#cmp-minimized-btn').hide();
-        $('#cmp-floating-container').html(card).show();
+        
+        // 플로팅 컨테이너에 HTML을 넣고, 확실하게 화면에 보이도록 fadeIn 사용
+        $('#cmp-floating-container').html(card).css('display', 'flex').hide().fadeIn(300);
     }
 
     function escapeHtml(str) {
@@ -350,11 +306,12 @@ ${recentChat}
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // ✨ 모바일 터치 호환성을 위한 jQuery 이벤트 위임 (인라인 onclick 대체)
+    // ✨ 모바일 터치 호환성을 위한 jQuery 이벤트 위임
     $(document).on('click', '.music-card-close', function () {
         const cardId = $(this).attr('data-id');
         $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); 
         $('#cmp-minimized-btn').hide(); 
+        $('#cmp-floating-container').hide();
     });
 
     $(document).on('click', '.music-card-minimize', function () {
@@ -370,7 +327,7 @@ ${recentChat}
 
     $(document).on('click', '#cmp-minimized-btn', function () {
         $(this).fadeOut(200, function() {
-            $('#cmp-floating-container').fadeIn(200);
+            $('#cmp-floating-container').css('display', 'flex').hide().fadeIn(200);
         });
     });
 
