@@ -40,12 +40,17 @@
         if (!extension_settings[EXTENSION_NAME]) {
             extension_settings[EXTENSION_NAME] = structuredClone(DEFAULT_SETTINGS);
         }
+        const s = extension_settings[EXTENSION_NAME];
         for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
-            if (!Object.hasOwn(extension_settings[EXTENSION_NAME], k)) {
-                extension_settings[EXTENSION_NAME][k] = v;
-            }
+            if (!Object.hasOwn(s, k)) s[k] = v;
         }
-        return extension_settings[EXTENSION_NAME];
+        // ✨ 구버전 호환: geminiApiKey → apiKey 마이그레이션
+        if (s.geminiApiKey && !s.apiKey) {
+            s.apiKey = s.geminiApiKey;
+            delete s.geminiApiKey;
+            saveSettingsDebounced();
+        }
+        return s;
     }
 
     async function initExtension() {
