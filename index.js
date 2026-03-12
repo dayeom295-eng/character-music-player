@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v1.8 — 전 기기 상단 고정 & 전용 API 연결 버그 완벽 수정
+ * v1.8 — 전 기기 상단 고정 & 실시간 API 오류 알림/테스트 기능 추가
  */
 
 (async function () {
@@ -66,7 +66,6 @@
         $('#cmp-custom-model').val(s.customModel || '');
         $('#cmp-api-key').val(s.apiKey || '');
 
-        // API 제공자에 따른 메뉴 숨김/표시 처리
         function updateAiUi() {
             const provider = $('#cmp-api-provider').val();
             if (provider === 'sillytavern') { 
@@ -81,7 +80,7 @@
         }
         updateAiUi(); 
 
-        // 이벤트 리스너 등록
+        // 설정 저장
         $('#cmp-enabled').on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
         $('#cmp-apikey').on('input', function () { getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-cooldown').on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
@@ -94,11 +93,33 @@
         $('#cmp-custom-model').on('input', function () { getSettings().customModel = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
 
-        // 테스트 버튼 로직
-        $('#cmp-test-btn').on('click', function () {
-            const dummyMusic = { title: "API 연결 테스트 곡", artist: "테스트 아티스트", reason: "이 카드가 보인다면 성공입니다." };
-            const dummyVideo = { watchUrl: "https://youtube.com", thumbnail: null };
-            renderCard(dummyMusic, dummyVideo, {name2: "테스터"}, getSettings().cardStyle || 'full');
+        // ✨ 찐 API 통신 테스트 버튼
+        $('#cmp-test-btn').on('click', async function () {
+            toastr.info("API 연결을 테스트 중입니다...", "Music Player");
+            
+            const dummyPrompt = `이건 API 연결 테스트야. 무조건 아래 JSON 형식으로만 답해.\n{"title":"테스트 곡 제목","artist":"테스트 가수","reason":"연결 성공!"}`;
+            
+            try {
+                const resText = await getAiResponse(dummyPrompt, true);
+                if (!resText) {
+                    toastr.error("API 응답이 없습니다. 설정(URL, 키, 모델명)을 확인하세요.", "Music Player 오류");
+                    return;
+                }
+                
+                const parsed = parseJsonSafely(resText);
+                if (!parsed) {
+                    toastr.warning("API는 연결되었지만, AI가 JSON 형식을 지키지 않았습니다.", "Music Player 경고");
+                    console.log("[CMP] AI 원본 응답:", resText);
+                    return;
+                }
+
+                toastr.success("API 연결 완벽 성공! UI를 띄웁니다.", "Music Player");
+                renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, {name2: "테스터"}, getSettings().cardStyle || 'full');
+
+            } catch (error) {
+                toastr.error("통신 오류 발생! F12 콘솔창을 확인하세요.", "Music Player 오류");
+                console.error("[CMP] 테스트 버튼 오류:", error);
+            }
         });
 
         if ($('#cmp-minimized-btn').length === 0) {
@@ -106,7 +127,7 @@
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (API 안정화) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (API 실시간 디버깅 탑재) ✅`);
     }
 
     // 🚀 API 분기 처리
@@ -124,35 +145,28 @@
 
     // 🤖 Gemini API 연결
     async function callGeminiAPI(prompt, isJson, s) {
-        if (!s.apiKey) {
-            console.warn("[CMP] Gemini API 키가 없습니다.");
-            return null;
-        }
+        if (!s.apiKey) throw new Error("Gemini API 키가 입력되지 않았습니다.");
+        
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${s.geminiModel}:generateContent?key=${s.apiKey}`;
         const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 200 } };
-        
         if (isJson) payload.generationConfig.responseMimeType = "application/json";
 
-        try {
-            const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            const data = await res.json();
-            if (data.error) console.error("[CMP] Gemini API 오류:", data.error);
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
-        } catch (err) { 
-            console.error("[CMP] Gemini 요청 실패:", err);
-            return null; 
-        }
+        const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(`Gemini HTTP Error: ${res.status}`);
+        
+        const data = await res.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
     }
 
-    // 🤖 OpenRouter / 타사 OpenAI 호환 API 연결
+    // 🤖 OpenRouter / OpenAI 호환 API 연결 (가장 에러가 많은 부분)
     async function callCustomOpenAI(prompt, isJson, s) {
         if (!s.customUrl || !s.customModel || !s.apiKey) {
-            console.warn("[CMP] Custom API 설정이 누락되었습니다.");
-            return null;
+            throw new Error("Custom API 설정(URL, 모델명, 키) 중 누락된 것이 있습니다.");
         }
         
-        // OpenRouter에서 다른 모델(Claude 등)이 터지지 않도록 response_format 옵션을 아예 뺐습니다.
-        // 대신 프롬프트에서 철저하게 JSON을 요구하게 만듭니다.
+        // URL 끝에 슬래시가 있으면 제거
+        const cleanUrl = s.customUrl.replace(/\/$/, "");
+
         const payload = { 
             model: s.customModel, 
             messages: [{ role: "user", content: prompt }], 
@@ -160,21 +174,37 @@
             max_tokens: 200 
         };
 
+        const res = await fetch(cleanUrl, { 
+            method: 'POST', 
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${s.apiKey}`,
+                'HTTP-Referer': 'https://sillytavern.app', // OpenRouter 권장 헤더
+                'X-Title': 'SillyTavern Music Player'
+            }, 
+            body: JSON.stringify(payload) 
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error("[CMP] Custom API 실패 상세:", errText);
+            throw new Error(`Custom API HTTP Error: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || null;
+    }
+
+    // 안전하게 JSON만 파싱해내는 함수
+    function parseJsonSafely(text) {
         try {
-            const res = await fetch(s.customUrl, { 
-                method: 'POST', 
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${s.apiKey}` 
-                }, 
-                body: JSON.stringify(payload) 
-            });
-            const data = await res.json();
-            if (data.error) console.error("[CMP] Custom API 오류:", data.error);
-            return data.choices?.[0]?.message?.content || null;
-        } catch (err) { 
-            console.error("[CMP] Custom API 요청 실패:", err);
-            return null; 
+            const clean = text.replace(/```json|```/gi, '').trim();
+            const s = clean.indexOf('{');
+            const e = clean.lastIndexOf('}');
+            if (s === -1 || e === -1) return null;
+            return JSON.parse(clean.slice(s, e + 1));
+        } catch (e) {
+            return null;
         }
     }
 
@@ -203,13 +233,13 @@
         try {
             const musicInfo = await requestMusic(text, context);
             if (!musicInfo) {
-                console.warn("[CMP] AI가 곡 정보를 생성하지 못했습니다.");
+                console.warn("[CMP] AI가 곡 정보를 생성하지 못해 카드를 띄우지 않습니다.");
                 return;
             }
             const videoInfo = await searchYouTube(musicInfo, s.youtubeApiKey);
             renderCard(musicInfo, videoInfo, context, s.cardStyle || 'full');
         } catch (err) {
-            console.error(`[${EXTENSION_NAME}] 메인 루프 오류:`, err);
+            console.error(`[${EXTENSION_NAME}] 루프 오류:`, err);
         } finally {
             isProcessing = false;
         }
@@ -232,27 +262,22 @@
         const charName = context.name2 || '캐릭터';
         const recentChat = (context.chat || []).slice(-6).map(m => `${m.is_user ? (context.name1 || 'User') : charName}: ${m.mes}`).join('\n');
         
-        const prompt = `다음은 "${charName}"와의 최근 대화야.
+        const prompt = `다음은 나(User)와 "${charName}"와의 최근 대화야.
 ---
 ${recentChat}
 ---
 [중요 지침]
-1. 만약 대화 중에 유저나 캐릭터가 **특정 곡 제목이나 아티스트**를 명시하며 듣자고 했다면, 반드시 그 곡을 찾아줘.
+1. 만약 대화 중에 유저나 캐릭터가 특정 곡 제목이나 아티스트를 명시하며 듣자고 했다면, 반드시 그 곡을 찾아줘.
 2. 특정 곡 언급이 없다면, 현재 분위기와 감정에 맞는 실제 존재하는 곡 1개를 알아서 추천해.
-반드시 아래 JSON 형식으로만 답해. 마크다운이나 다른 텍스트는 절대 쓰지 마.
+반드시 아래 JSON 형식으로만 답해. 마크다운이나 다른 부가 설명은 절대 쓰지 마.
 {"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
 
         try {
             const res = await getAiResponse(prompt, true);
             if (!res) return null;
-            // 앞뒤 쓸데없는 텍스트 제거하고 중괄호 부분만 추출
-            const clean = res.replace(/```json|```/gi, '').trim();
-            const s = clean.indexOf('{');
-            const e = clean.lastIndexOf('}');
-            if (s === -1 || e === -1) return null;
-            return JSON.parse(clean.slice(s, e + 1));
+            return parseJsonSafely(res);
         } catch (err) { 
-            console.error("[CMP] JSON 파싱 실패:", err);
+            console.error("[CMP] 곡 요청 중 오류 발생:", err);
             return null; 
         }
     }
