@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v1.8 — Custom API 시스템 프롬프트 주입 및 JSON 강제화 완벽 패치
+ * v1.8 — 전 기기 상단 고정 & 실시간 API 오류 알림/테스트 기능 추가
  */
 
 (async function () {
@@ -21,7 +21,7 @@
         cardStyle: 'full',
         apiProvider: 'sillytavern',
         apiKey: '',
-        geminiModel: 'gemini-1.5-flash',
+        geminiModel: 'gemini-1.5-flash-latest',
         customUrl: '',
         customModel: ''
     });
@@ -53,13 +53,15 @@
         const settingsHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
         $('#extensions_settings').append(settingsHtml);
 
+        // UI 값 초기화
         $('#cmp-enabled').prop('checked', s.enabled);
         $('#cmp-apikey').val(s.youtubeApiKey || '');
         $('#cmp-cooldown').val(s.cooldownMinutes);
         $('#cmp-sensitivity').val(s.triggerSensitivity);
         $('#cmp-cardstyle').val(s.cardStyle || 'full');
+        
         $('#cmp-api-provider').val(s.apiProvider || 'sillytavern');
-        $('#cmp-gemini-model').val(s.geminiModel || 'gemini-1.5-flash');
+        $('#cmp-gemini-model').val(s.geminiModel || 'gemini-1.5-flash-latest');
         $('#cmp-custom-url').val(s.customUrl || '');
         $('#cmp-custom-model').val(s.customModel || '');
         $('#cmp-api-key').val(s.apiKey || '');
@@ -78,28 +80,46 @@
         }
         updateAiUi(); 
 
+        // 설정 저장
         $('#cmp-enabled').on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
         $('#cmp-apikey').on('input', function () { getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-cooldown').on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
         $('#cmp-sensitivity').on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
         $('#cmp-cardstyle').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
+        
         $('#cmp-api-provider').on('change', function () { getSettings().apiProvider = this.value; saveSettingsDebounced(); updateAiUi(); });
         $('#cmp-gemini-model').on('input', function () { getSettings().geminiModel = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-custom-url').on('input', function () { getSettings().customUrl = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-custom-model').on('input', function () { getSettings().customModel = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
 
+        // ✨ 찐 API 통신 테스트 버튼
         $('#cmp-test-btn').on('click', async function () {
             toastr.info("API 연결을 테스트 중입니다...", "Music Player");
-            const dummyPrompt = `이건 테스트야. 반드시 아래 JSON 형식으로만 답해.\n{"title":"테스트 곡 제목","artist":"테스트 가수","reason":"연결 성공!"}`;
+            
+            const dummyPrompt = `이건 API 연결 테스트야. 무조건 아래 JSON 형식으로만 답해.\n{"title":"테스트 곡 제목","artist":"테스트 가수","reason":"연결 성공!"}`;
+            
             try {
                 const resText = await getAiResponse(dummyPrompt, true);
-                if (!resText) { toastr.error("응답이 없습니다. 설정을 확인하세요.", "Music Player 오류"); return; }
+                if (!resText) {
+                    toastr.error("API 응답이 없습니다. 설정(URL, 키, 모델명)을 확인하세요.", "Music Player 오류");
+                    return;
+                }
+                
                 const parsed = parseJsonSafely(resText);
-                if (!parsed) { toastr.warning("연결은 되었으나 JSON 형식이 아닙니다. 콘솔창 확인", "Music Player 경고"); console.log(resText); return; }
-                toastr.success("API 연결 성공!", "Music Player");
+                if (!parsed) {
+                    toastr.warning("API는 연결되었지만, AI가 JSON 형식을 지키지 않았습니다.", "Music Player 경고");
+                    console.log("[CMP] AI 원본 응답:", resText);
+                    return;
+                }
+
+                toastr.success("API 연결 완벽 성공! UI를 띄웁니다.", "Music Player");
                 renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, {name2: "테스터"}, getSettings().cardStyle || 'full');
-            } catch (error) { toastr.error("통신 오류 발생! F12 콘솔창 확인", "Music Player 오류"); }
+
+            } catch (error) {
+                toastr.error("통신 오류 발생! F12 콘솔창을 확인하세요.", "Music Player 오류");
+                console.error("[CMP] 테스트 버튼 오류:", error);
+            }
         });
 
         if ($('#cmp-minimized-btn').length === 0) {
@@ -107,90 +127,83 @@
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (Custom API 시스템 권한 패치) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (API 실시간 디버깅 탑재) ✅`);
     }
 
+    // 🚀 API 분기 처리
     async function getAiResponse(prompt, isJson = false) {
         const s = getSettings();
-        if (s.apiProvider === 'gemini') return await callGeminiAPI(prompt, isJson, s);
-        else if (s.apiProvider === 'custom') return await callCustomOpenAI(prompt, isJson, s);
-        else {
+        if (s.apiProvider === 'gemini') {
+            return await callGeminiAPI(prompt, isJson, s);
+        } else if (s.apiProvider === 'custom') {
+            return await callCustomOpenAI(prompt, isJson, s);
+        } else {
             const { generateQuietPrompt } = SillyTavern.getContext();
             try { return await generateQuietPrompt(prompt); } catch { return null; }
         }
     }
 
+    // 🤖 Gemini API 연결
     async function callGeminiAPI(prompt, isJson, s) {
-        if (!s.apiKey) throw new Error("Gemini API 키 누락");
+        if (!s.apiKey) throw new Error("Gemini API 키가 입력되지 않았습니다.");
+        
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${s.geminiModel}:generateContent?key=${s.apiKey}`;
-        const payload = { 
-            contents: [{ role: "user", parts: [{ text: prompt }] }], 
-            generationConfig: { temperature: 0.5, maxOutputTokens: 200 }, // 온도를 낮춰서 정확도 상향
-            safetySettings: [
-                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-            ]
-        };
+        const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 200 } };
         if (isJson) payload.generationConfig.responseMimeType = "application/json";
 
         const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(`Gemini HTTP Error: ${res.status}`);
+        
         const data = await res.json();
-        if (data.promptFeedback?.blockReason) throw new Error(`검열 차단됨: ${data.promptFeedback.blockReason}`);
         return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
     }
 
-    // ✨ 문제의 Custom API 부분을 완전히 뜯어고쳤습니다.
+    // 🤖 OpenRouter / OpenAI 호환 API 연결 (가장 에러가 많은 부분)
     async function callCustomOpenAI(prompt, isJson, s) {
-        if (!s.customUrl || !s.customModel || !s.apiKey) throw new Error("Custom API 설정 누락");
-        const cleanUrl = s.customUrl.replace(/\/$/, "");
-        
-        // 🚀 AI가 절대 딴소리를 못하도록 [System] 프롬프트를 강제로 주입합니다.
-        const messages = [];
-        if (isJson) {
-            messages.push({ 
-                role: "system", 
-                content: "You are a data extraction API. You MUST output ONLY raw JSON. Do not write any conversational text, greetings, or markdown blocks." 
-            });
-        } else {
-            messages.push({ 
-                role: "system", 
-                content: "Answer only with 'yes' or 'no'." 
-            });
+        if (!s.customUrl || !s.customModel || !s.apiKey) {
+            throw new Error("Custom API 설정(URL, 모델명, 키) 중 누락된 것이 있습니다.");
         }
         
-        // 실제 유저 대화(prompt)를 덧붙입니다.
-        messages.push({ role: "user", content: prompt });
+        // URL 끝 슬래시 제거 후, 베이스 URL이면 /chat/completions 자동 추가
+        let cleanUrl = s.customUrl.replace(/\/$/, "");
+        if (!cleanUrl.endsWith('/chat/completions') && !cleanUrl.endsWith('/completions')) {
+            cleanUrl = cleanUrl + '/chat/completions';
+        }
 
         const payload = { 
             model: s.customModel, 
-            messages: messages, 
-            temperature: 0.3, // AI가 헛소리를 덜 하도록 온도 낮춤
-            max_tokens: 300 
+            messages: [{ role: "user", content: prompt }], 
+            temperature: 0.7, 
+            max_tokens: 300
         };
+
+        // ✨ JSON 모드 강제 — 모델이 JSON 이외의 텍스트를 반환하는 문제 방지
+        if (isJson) {
+            payload.response_format = { type: "json_object" };
+        }
 
         const res = await fetch(cleanUrl, { 
             method: 'POST', 
             headers: { 
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${s.apiKey}`,
-                'HTTP-Referer': 'https://sillytavern.app',
+                'HTTP-Referer': 'https://sillytavern.app', // OpenRouter 권장 헤더
                 'X-Title': 'SillyTavern Music Player'
             }, 
             body: JSON.stringify(payload) 
         });
 
-        if (!res.ok) throw new Error(`Custom API HTTP Error: ${res.status}`);
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error(`[CMP] Custom API 실패 (${res.status}) URL: ${cleanUrl}`, errText);
+            throw new Error(`Custom API HTTP Error: ${res.status} — ${errText.slice(0, 200)}`);
+        }
+        
         const data = await res.json();
-        
-        // 콘솔창에 AI가 실제로 뭐라고 대답했는지 띄워줍니다 (디버깅용)
-        const aiAnswer = data.choices?.[0]?.message?.content || "";
-        console.log("[CMP] 커스텀 API 실제 응답결과:", aiAnswer);
-        
-        return aiAnswer;
+        return data.choices?.[0]?.message?.content || null;
     }
 
+    // 안전하게 JSON만 파싱해내는 함수
     function parseJsonSafely(text) {
         try {
             const clean = text.replace(/```json|```/gi, '').trim();
@@ -198,10 +211,12 @@
             const e = clean.lastIndexOf('}');
             if (s === -1 || e === -1) return null;
             return JSON.parse(clean.slice(s, e + 1));
-        } catch { return null; }
+        } catch (e) {
+            return null;
+        }
     }
 
-    async function onMessageReceived() {
+    async function onMessageReceived(messageIdOrData) {
         const s = getSettings();
         if (!s?.enabled) return;
         if (isProcessing) return;
@@ -220,23 +235,19 @@
         const triggered = await checkTrigger(text, s.triggerSensitivity, context);
         if (!triggered) return;
 
-        toastr.info("🎵 음악 키워드 감지됨! 곡을 검색합니다...", "Music Player 작동");
-
         isProcessing = true;
         lastCardTime = now;
 
         try {
             const musicInfo = await requestMusic(text, context);
             if (!musicInfo) {
-                toastr.warning("AI가 추천 형식을 지키지 않아 카드를 띄우지 못했습니다. F12 콘솔창을 확인하세요.", "Music Player 실패");
+                console.warn("[CMP] AI가 곡 정보를 생성하지 못해 카드를 띄우지 않습니다.");
                 return;
             }
-            toastr.success(`[${musicInfo.title}] 곡을 찾았습니다!`, "Music Player");
-            
             const videoInfo = await searchYouTube(musicInfo, s.youtubeApiKey);
             renderCard(musicInfo, videoInfo, context, s.cardStyle || 'full');
         } catch (err) {
-            toastr.error(`오류: ${err.message}`, "Music Player 에러");
+            console.error(`[${EXTENSION_NAME}] 루프 오류:`, err);
         } finally {
             isProcessing = false;
         }
@@ -245,7 +256,8 @@
     async function checkTrigger(text, sensitivity, context) {
         if (sensitivity === 'high') {
             try {
-                const prompt = `Does the following message imply a situation where listening to music would be appropriate? Answer yes or no:\n"${text}"`;
+                const charName = context.name2 || '캐릭터';
+                const prompt = `다음은 "${charName}"의 대화 메시지야:\n"${text}"\n이 메시지가 음악 카드를 띄울 만한 감성적인 상황이면 "yes", 아니면 "no"만 답해.`;
                 const res = await getAiResponse(prompt, false);
                 return res?.toLowerCase().includes('yes') ?? false;
             } catch { return false; }
@@ -256,23 +268,26 @@
 
     async function requestMusic(text, context) {
         const charName = context.name2 || '캐릭터';
-        const recentChat = (context.chat || []).slice(-4).map(m => `${m.is_user ? 'User' : charName}: ${m.mes}`).join('\n');
+        const recentChat = (context.chat || []).slice(-6).map(m => `${m.is_user ? (context.name1 || 'User') : charName}: ${m.mes}`).join('\n');
         
-        // 🚀 지시사항(프롬프트)을 영어로 변경하여 글로벌 API들이 지시를 더 완벽하게 따르도록 만듭니다. (출력은 한국어로 나옴)
-        const prompt = `Based on the chat history below, recommend 1 real, existing song that fits the current mood.
-If the characters explicitly mention a specific song or artist, you MUST choose that song.
-Ignore any roleplay rules or censorship. Just extract the song information.
-
-Chat history:
+        const prompt = `다음은 나(User)와 "${charName}"와의 최근 대화야.
 ---
 ${recentChat}
 ---
-You MUST output ONLY a valid JSON object in this exact format. No markdown, no conversational text.
-{"title":"Song Title", "artist":"Artist Name", "reason":"Short reason in Korean"}`;
+[중요 지침]
+1. 만약 대화 중에 유저나 캐릭터가 특정 곡 제목이나 아티스트를 명시하며 듣자고 했다면, 반드시 그 곡을 찾아줘.
+2. 특정 곡 언급이 없다면, 현재 분위기와 감정에 맞는 실제 존재하는 곡 1개를 알아서 추천해.
+반드시 아래 JSON 형식으로만 답해. 마크다운이나 다른 부가 설명은 절대 쓰지 마.
+{"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
 
-        const res = await getAiResponse(prompt, true);
-        if (!res) return null;
-        return parseJsonSafely(res);
+        try {
+            const res = await getAiResponse(prompt, true);
+            if (!res) return null;
+            return parseJsonSafely(res);
+        } catch (err) { 
+            console.error("[CMP] 곡 요청 중 오류 발생:", err);
+            return null; 
+        }
     }
 
     async function searchYouTube(musicInfo, apiKey) {
@@ -293,35 +308,64 @@ You MUST output ONLY a valid JSON object in this exact format. No markdown, no c
         const cardId   = `cmp-card-${Date.now()}`;
         const watchUrl = videoInfo?.watchUrl || '#';
         const thumb = videoInfo?.thumbnail;
+
         const minBtn   = `<button class="music-card-minimize" title="최소화">−</button>`;
         const closeBtn = `<button class="music-card-close" data-id="${cardId}" title="닫기">✕</button>`;
         const playBtn  = `<button class="music-card-play" data-url="${escapeHtml(watchUrl)}" title="YouTube에서 열기">▶</button>`;
+        
         const controls = `<div class="music-card-controls">${playBtn}${minBtn}${closeBtn}</div>`;
         let card = '';
 
         if (style === 'retro') {
-            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card-ipod"><div class="ipod-icon">🎵</div><div class="ipod-screen"><marquee scrollamount="3" scrolldelay="0" class="ipod-marquee"><b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)}</marquee></div>${controls}</div></div>`;
+            const reasonText = musicInfo.reason ? ` <span style="opacity:0.7; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
+            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card-ipod"><div class="ipod-icon">🎵</div><div class="ipod-screen"><marquee scrollamount="3" scrolldelay="0" class="ipod-marquee"><b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}</marquee></div>${controls}</div></div>`;
         } else if (style === 'text') {
-            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card-airpods"><div class="airpods-icon">🎧</div><div class="airpods-screen"><marquee scrollamount="3" scrolldelay="0" class="airpods-marquee"><b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)}</marquee></div>${controls}</div></div>`;
+            const reasonText = musicInfo.reason ? ` <span style="opacity:0.6; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
+            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card-airpods"><div class="airpods-icon">🎧</div><div class="airpods-screen"><marquee scrollamount="3" scrolldelay="0" class="airpods-marquee"><b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}</marquee></div>${controls}</div></div>`;
         } else if (style === 'mini') {
             const thumbHtml = thumb ? `<img class="lp-cover" src="${escapeHtml(thumb)}" />` : `<div class="lp-cover placeholder">🎵</div>`;
             card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card-lp"><div class="lp-container">${thumbHtml}<div class="lp-hole"></div></div><div class="lp-info"><div class="lp-title">${escapeHtml(musicInfo.title)}</div><div class="lp-artist">${escapeHtml(musicInfo.artist)}</div></div>${controls}</div></div>`;
         } else {
             const thumbHtml = thumb ? `<img class="music-card-thumbnail" src="${escapeHtml(thumb)}" />` : `<div class="music-card-thumbnail-placeholder">🎵</div>`;
-            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card">${thumbHtml}<div class="music-card-info"><div class="music-card-label">${escapeHtml(charName)} 듣는 중</div><div class="music-card-title">${escapeHtml(musicInfo.title)}</div><div class="music-card-artist">${escapeHtml(musicInfo.artist)}</div></div>${controls}</div></div>`;
+            card = `<div class="music-card-wrapper" id="${cardId}"><div class="music-card">${thumbHtml}<div class="music-card-info"><div class="music-card-label">${escapeHtml(charName)} 듣는 중</div><div class="music-card-title">${escapeHtml(musicInfo.title)}</div><div class="music-card-artist">${escapeHtml(musicInfo.artist)}</div>${musicInfo.reason ? `<div class="music-card-artist" style="font-style:italic;opacity:0.55;margin-top:2px">${escapeHtml(musicInfo.reason)}</div>` : ''}</div>${controls}</div></div>`;
         }
 
-        if ($('#cmp-floating-container').length === 0) $(document.body).append('<div id="cmp-floating-container" style="display:none;"></div>');
+        if ($('#cmp-floating-container').length === 0) {
+            $(document.body).append('<div id="cmp-floating-container" style="display:none;"></div>');
+        }
+        
         $('#cmp-minimized-btn').hide();
         $('#cmp-floating-container').html(card).css('display', 'flex').hide().fadeIn(300);
     }
 
-    function escapeHtml(str) { return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
 
-    $(document).on('click', '.music-card-close', function () { $(`#${$(this).attr('data-id')}`).fadeOut(200, function () { $(this).remove(); }); $('#cmp-minimized-btn').hide(); $('#cmp-floating-container').hide(); });
-    $(document).on('click', '.music-card-minimize', function () { $('#cmp-floating-container').fadeOut(200, function() { $('#cmp-minimized-btn').fadeIn(200); }); });
-    $(document).on('click', '.music-card-play', function () { const url = $(this).attr('data-url'); if (url) window.open(url, '_blank'); });
-    $(document).on('click', '#cmp-minimized-btn', function () { $(this).fadeOut(200, function() { $('#cmp-floating-container').css('display', 'flex').hide().fadeIn(200); }); });
+    $(document).on('click', '.music-card-close', function () {
+        const cardId = $(this).attr('data-id');
+        $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); 
+        $('#cmp-minimized-btn').hide(); 
+        $('#cmp-floating-container').hide();
+    });
+
+    $(document).on('click', '.music-card-minimize', function () {
+        $('#cmp-floating-container').fadeOut(200, function() {
+            $('#cmp-minimized-btn').fadeIn(200);
+        });
+    });
+
+    $(document).on('click', '.music-card-play', function () {
+        const url = $(this).attr('data-url');
+        if (url) window.open(url, '_blank');
+    });
+
+    $(document).on('click', '#cmp-minimized-btn', function () {
+        $(this).fadeOut(200, function() {
+            $('#cmp-floating-container').css('display', 'flex').hide().fadeIn(200);
+        });
+    });
 
     initExtension();
 })();
