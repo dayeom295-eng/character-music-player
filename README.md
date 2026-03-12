@@ -1,32 +1,10 @@
-# 🎵 Character Music Player v1.3
+# 🎵 Character Music Player v1.8
 
 캐릭터의 감정/상황에 따라 어울리는 음악을 카드로 표시하는 SillyTavern 확장입니다.
 
 ---
 
-## 📦 설치 방법
-
-1. 이 폴더(`character-music-player`)를 아래 경로에 복사하세요:
-```
-SillyTavern/public/extensions/third-party/character-music-player/
-```
-2. SillyTavern 재시작
-3. Extensions 메뉴에서 **Character Music Player** 활성화
-
----
-
-## 🎵 재생 방식
-
-| 상황 | 동작 |
-|------|------|
-| **API 키 있음** | 앨범아트 표시 + ▶ 클릭 시 YouTube **새 탭**으로 바로 재생 |
-| **API 키 없음** | ▶ 클릭 시 YouTube 검색 결과 **새 탭**으로 열림 |
-
-> YouTube는 localhost origin에서의 embed 재생을 차단하므로, 실리태번 내부 재생은 지원하지 않습니다.
-
----
-
-## 🔑 YouTube API 키 발급 (무료, 선택사항)
+## 앨범아트가 보이게 하려면? 🔑 YouTube API 키 발급 (무료, 선택사항)
 
 1. [Google Cloud Console](https://console.cloud.google.com/) 접속
 2. 새 프로젝트 생성
@@ -45,18 +23,22 @@ SillyTavern/public/extensions/third-party/character-music-player/
 | YouTube API 키 | 없어도 동작 (앨범아트 없이) |
 | 카드 표시 최소 간격 | 카드가 너무 자주 뜨지 않도록 쿨다운 (기본 3분) |
 | 트리거 민감도 | 낮음 / 보통 / 높음 |
-| 카드 디자인 | 풀카드 / 미니 / 텍스트 |
+| 카드 디자인 | 풀카드 / LP판 / 에어팟 / 레트로  |
 
 ---
 
-## 🎯 트리거 조건
+## 🎯 트리거 조건 (언제 음악이 나오나요?)
 
-- **감정 묘사** — 분노, 슬픔, 설렘, 그리움, 외로움 등
-- **음악 키워드** — 음악, 노래, 흥얼거림, BGM 등
-- **시간/장소** — 새벽, 빗소리, 카페, 드라이브 등
-- **높음 모드** — AI가 분위기를 직접 판단
+대화 내용(유저 메시지)에 아래와 같은 상황이 감지되면 확장이 발동합니다.
+- **신청곡:** "이 노래 들어볼래?", "OOO의 OOO 틀어줘"
+- **감정:** 분노, 슬픔, 설렘, 그리움, 외로움, 힐링, 위로 등
+- **장소/시간:** 새벽, 빗소리, 카페, 드라이브, 침대, 귀갓길 등
+- **행동:** 이어폰, 헤드폰, 피아노, 흥얼거림, 플레이리스트 등
+
+*(설정에서 '트리거 민감도'를 조절할 수 있습니다.)*
 
 ---
+
 
 ## 📁 파일 구조
 
