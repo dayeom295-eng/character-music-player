@@ -2,10 +2,11 @@
 
 #music-player-settings { padding: 10px 0; }
 
-/* ✨ 기본 플로팅 컨테이너 (PC는 하단) */
+/* ✨ 전 기기(PC/모바일) 상단 고정 플로팅 컨테이너 */
 #cmp-floating-container {
   position: fixed !important;
-  bottom: 85px; 
+  top: 65px !important;     /* 화면 위쪽에 배치 (상단 메뉴바 바로 아래) */
+  bottom: auto !important;  /* 하단 배치 속성 완전 제거 */
   left: 50% !important;
   transform: translateX(-50%) !important;
   z-index: 2147483647 !important;
@@ -14,12 +15,14 @@
   justify-content: center;
   align-items: center;
   width: max-content;
+  max-width: 95vw;          /* 화면 밖으로 안 나가게 방지 */
 }
 
-/* ✨ 최소화 복구 버튼 (PC는 우측 하단) */
+/* ✨ 최소화 복구 버튼 (우측 상단 플로팅) */
 #cmp-minimized-btn {
   position: fixed !important;
-  bottom: 90px;
+  top: 70px !important;     /* 최소화 버튼도 상단으로 이동 */
+  bottom: auto !important;
   right: 25px;
   background: rgba(40, 40, 45, 0.85);
   backdrop-filter: blur(8px);
@@ -38,15 +41,9 @@
 }
 #cmp-minimized-btn:hover { background: rgba(60, 60, 65, 0.95); transform: scale(1.05); }
 
-/* 🚀 [핵심] 모바일 및 태블릿 대응: 무조건 화면 상단(Top)으로 이동! */
+/* 모바일 화면에서는 버튼이 화면 밖으로 나가지 않도록 우측 여백만 살짝 줄임 */
 @media screen and (max-width: 800px) {
-  #cmp-floating-container {
-    bottom: auto !important; /* 하단 고정 취소 */
-    top: 60px !important;    /* 화면 위쪽에 배치 (상단 네비게이션 바로 아래) */
-  }
   #cmp-minimized-btn {
-    bottom: auto !important;
-    top: 65px !important;
     right: 15px !important;
   }
 }
@@ -57,9 +54,9 @@
   filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3)); 
 }
 
-/* 카드가 나타나는 애니메이션 */
+/* 카드가 위에서 아래로 스르륵 내려오는 애니메이션 */
 @keyframes musicCardSlideIn {
-  from { opacity: 0; transform: translateY(-15px) scale(0.95); } /* 위에서 아래로 스르륵 */
+  from { opacity: 0; transform: translateY(-15px) scale(0.95); } 
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
