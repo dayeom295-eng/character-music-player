@@ -1,6 +1,6 @@
 /**
  * Character Music Player Extension for SillyTavern
- * v1.5 — 최종판 (다국어 트리거 확장 & LP/iPod 커스텀 디자인 적용)
+ * v1.6 — 최종 디자인 적용 (캐릭터 말풍선 내부 삽입, 에어팟 UI, 드롭다운 이름 직관화)
  */
 
 (async function () {
@@ -26,21 +26,15 @@
         customModel: ''
     });
 
-    // ✨ 한/영/일 방대한 트리거 단어 확장
     const TRIGGER_PATTERNS = [
-        // 한국어
         '분노','화가','격분','열받','짜증','슬픔','눈물','울음','설렘','두근','흥분','황홀','절망','그리움','외로움','쓸쓸','긴장','두려움',
         '음악','노래','곡','멜로디','리듬','흥얼','콧노래','듣고 있','틀어','플레이리스트','이어폰','헤드폰','BGM','피아노','기타','연주',
         '새벽','늦은 밤','저녁 노을','황혼','달빛','빗소리','비가 내리','눈이 내리','드라이브','산책','카페','침대','잠들기 전','귀갓길',
         '위로','힐링','추억','에어팟','스피커','오디오','재생','뮤직',
-        
-        // 영어
         'music','song','melody','rhythm','humming','listening to','play a track','playlist','earphones','headphones','bgm',
         'piano','guitar','playing','sing','dancing','vibe','dawn','sunset','raining','driving','walking','cafe',
         'comfort','healing','crying','tears','longing','memories','airpods','speaker','audio','mp3','track','tune',
         'acoustic','jazz','pop','rock','classical','sad','happy','angry','lonely','nostalgic',
-        
-        // 일본어
         '音楽','歌','曲','メロディ','リズム','鼻歌','聴いて','かけて','プレイリスト','イヤホン','ヘッドホン','BGM',
         'ピアノ','ギター','演奏','歌う','踊る','エモい','夜明け','夕暮れ','雨','ドライブ','散歩','カフェ',
         '慰め','癒し','涙','泣く','恋しい','思い出','スピーカー','オーディオ','再生','トラック','チューン',
@@ -67,7 +61,11 @@
         const settingsHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
         $('#extensions_settings').append(settingsHtml);
 
-        // ✨ 모델 설명 제거된 UI
+        // ✨ 1. 기존 드롭다운 메뉴 텍스트를 직관적으로 강제 변경 (settings.html 수정 불필요)
+        $('#cmp-cardstyle option[value="full"]').text('1. 풀카드 (앨범아트 보임)');
+        $('#cmp-cardstyle option[value="mini"]').text('2. LP판 (앨범아트 보임)');
+        $('#cmp-cardstyle option[value="text"]').text('3. 에어팟 (앨범아트 안 보임)');
+
         const aiUI = `
             <div class="flex-container flexFlowColumn" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--SmartThemeBorderColor);">
                 <div style="margin-bottom: 10px;"><b>🤖 음악 추천용 전용 AI 설정</b></div>
@@ -145,7 +143,7 @@
         $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.5 (LP/iPod UI 업데이트) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.6 (캐릭터 말풍선 내부 삽입 & 에어팟 UI) ✅`);
     }
 
     async function getAiResponse(prompt, isJson = false) {
@@ -305,14 +303,14 @@ ${recentChat}
         let card = '';
 
         if (style === 'text') {
-            // ✨ 3. 옛날 아이팟 전광판(Marquee) 디자인
-            const reasonText = musicInfo.reason ? ` <span style="opacity:0.7; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
+            // ✨ 3. 에어팟 위젯 감성 (화이트/블러, 모서리 둥금, 🎧 아이콘)
+            const reasonText = musicInfo.reason ? ` <span style="opacity:0.6; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
             card = `
             <div class="music-card-wrapper" id="${cardId}">
-                <div class="music-card-ipod">
-                    <div class="ipod-icon">🎵</div>
-                    <div class="ipod-screen">
-                        <marquee scrollamount="3" scrolldelay="0" class="ipod-marquee">
+                <div class="music-card-airpods">
+                    <div class="airpods-icon">🎧</div>
+                    <div class="airpods-screen">
+                        <marquee scrollamount="3" scrolldelay="0" class="airpods-marquee">
                             <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
                         </marquee>
                     </div>
@@ -322,7 +320,7 @@ ${recentChat}
             </div>`;
 
         } else if (style === 'mini') {
-            // ✨ 2. 빙글빙글 도는 LP판 디자인
+            // 2. LP판 디자인
             const thumbHtml = thumb 
                 ? `<img class="lp-cover" src="${escapeHtml(thumb)}" />` 
                 : `<div class="lp-cover placeholder">🎵</div>`;
@@ -362,11 +360,19 @@ ${recentChat}
             </div>`;
         }
 
+        // ✨ 2. 위치 수정: 캐릭터 말풍선 텍스트(mes_text) 안쪽 맨 밑에 완벽하게 삽입
         const $mesText = $(`#chat .mes[mesid="${messageId}"] .mes_text`);
         const $mes     = $(`#chat .mes[mesid="${messageId}"]`);
-        if ($mesText.length) $mesText.after(card);
-        else if ($mes.length) $mes.append(card);
-        else { const $last = $('#chat .mes:last .mes_text'); if ($last.length) $last.after(card); else $('#chat').append(card); }
+        
+        if ($mesText.length) {
+            $mesText.append(card);
+        } else if ($mes.length) {
+            $mes.append(card);
+        } else { 
+            const $last = $('#chat .mes:last .mes_text'); 
+            if ($last.length) $last.append(card); 
+            else $('#chat').append(card); 
+        }
         
         const chatEl = document.getElementById('chat');
         if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
