@@ -1,0 +1,47 @@
+<div id="music-player-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>🎵 Character Music Player</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content" style="padding:12px 10px">
+            <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer">
+                <input type="checkbox" id="cmp-enabled" />
+                <span>확장 활성화</span>
+            </label>
+            <div style="margin-bottom:10px">
+                <div style="font-size:12px;margin-bottom:4px">YouTube Data API 키</div>
+                <input type="text" id="cmp-apikey"
+                    placeholder="AIza... (없어도 동작)"
+                    style="width:100%;padding:6px 8px;border-radius:6px;box-sizing:border-box" />
+            </div>
+            <div style="margin-bottom:10px">
+                <div style="font-size:12px;margin-bottom:4px">카드 표시 최소 간격 (분)</div>
+                <input type="number" id="cmp-cooldown"
+                    min="1" max="60" value="3"
+                    style="width:70px;padding:6px 8px;border-radius:6px" />
+            </div>
+            <div style="margin-bottom:10px">
+                <div style="font-size:12px;margin-bottom:4px">트리거 민감도</div>
+                <select id="cmp-sensitivity" style="padding:6px 8px;border-radius:6px">
+                    <option value="low">낮음 (키워드 2개 이상)</option>
+                    <option value="medium" selected>보통 (키워드 1개)</option>
+                    <option value="high">높음 (AI가 판단)</option>
+                </select>
+            </div>
+            <div style="margin-bottom:10px">
+                <div style="font-size:12px;margin-bottom:4px">카드 디자인</div>
+                <select id="cmp-cardstyle" style="padding:6px 8px;border-radius:6px">
+                    <option value="full">풀카드 (앨범아트 포함)</option>
+                    <option value="mini">미니 (작고 심플)</option>
+                    <option value="text">텍스트 (최소화)</option>
+                </select>
+            </div>
+            <div style="font-size:11px;color:#888;line-height:1.9">
+                🎵 <b>API 키 있음</b> — 앨범아트 표시, ▶ 클릭 시 YouTube 새 탭으로 재생<br>
+                🔗 <b>API 키 없음</b> — ▶ 클릭 시 YouTube 검색 결과 새 탭으로 열림<br>
+                🎯 <b>높음</b> = AI가 매 응답마다 상황 직접 판단
+            </div>
+        </div>
+    </div>
+</div>

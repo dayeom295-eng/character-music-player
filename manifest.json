@@ -1,0 +1,12 @@
+{
+  "display_name": "Character Music Player",
+  "loading_order": 10,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "dayeom295-eng",
+  "version": "1.3.0",
+  "homePage": "https://github.com/dayeom295-eng/character-music-player",
+  "auto_update": true
+}
