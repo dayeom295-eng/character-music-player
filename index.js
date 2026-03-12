@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v1.8 — 신청곡 최우선 반영 & 접기/펴기(최소화) 기능 추가
+ * v1.8.1 — 모바일/태블릿 호환성 수정
  */
 
 (async function () {
@@ -135,11 +135,16 @@
 
         // 전역 최소화 복구 버튼 삽입
         if ($('#cmp-minimized-btn').length === 0) {
-            $('body').append('<div id="cmp-minimized-btn" onclick="window._cmpMaximize()">🎵 음악 펴기</div>');
+            $('body').append('<div id="cmp-minimized-btn">🎵 음악 펴기</div>');
+            // 모바일 호환: onclick 대신 jQuery 이벤트 바인딩
+            $('#cmp-minimized-btn').on('click touchend', function(e) {
+                e.preventDefault();
+                window._cmpMaximize();
+            });
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (신청곡 우선 & 접기/펴기) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8.1 (모바일 호환) ✅`);
     }
 
     async function getAiResponse(prompt, isJson = false) {
@@ -266,12 +271,12 @@ ${recentChat}
     // ✨ 전역 함수: 닫기, 최소화, 최대화, 열기
     window._cmpClose = function (cardId) { 
         $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); 
-        $('#cmp-minimized-btn').hide(); // 닫을 땐 최소화 버튼도 숨김
+        $('#cmp-minimized-btn').hide();
     };
     
     window._cmpMinimize = function () {
         $('#cmp-floating-container').fadeOut(200, function() {
-            $('#cmp-minimized-btn').fadeIn(200);
+            $('#cmp-minimized-btn').css('display', 'flex').hide().fadeIn(200);
         });
     };
 
@@ -281,49 +286,63 @@ ${recentChat}
         });
     };
 
-    window._cmpOpen = function (url) { window.open(url, '_blank'); };
+    // ✨ 수정: 모바일에서 window.open 팝업 차단 우회
+    // 터치 이벤트에서 직접 호출되지 않는 경우 <a> 태그 클릭으로 대체
+    window._cmpOpen = function (url) {
+        try {
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (e) {
+            window.open(url, '_blank');
+        }
+    };
 
-    // 렌더링 방식 (버튼 그룹에 최소화 버튼 추가)
+    // ✨ 마퀴 HTML 생성 헬퍼 (<marquee> 대신 CSS 애니메이션 사용)
+    function makeMarquee(html, extraClass) {
+        return `<div class="cmp-marquee-wrapper"><span class="cmp-marquee-inner ${extraClass || ''}">${html}</span></div>`;
+    }
+
+    // 렌더링
     function renderCard(musicInfo, videoInfo, context, style) {
         const charName = context.name2 || '캐릭터';
         const cardId   = `cmp-card-${Date.now()}`;
         const watchUrl = videoInfo?.watchUrl || '#';
         const thumb = videoInfo?.thumbnail;
 
-        // ✨ 최소화 버튼 추가
-        const minBtn   = `<button class="music-card-minimize" onclick="window._cmpMinimize()" title="최소화">−</button>`;
-        const closeBtn = `<button class="music-card-close" onclick="window._cmpClose('${cardId}')" title="닫기">✕</button>`;
-        const playBtn  = `<button class="music-card-play" onclick="window._cmpOpen('${escapeHtml(watchUrl)}')" title="YouTube에서 열기">▶</button>`;
-        
-        // 우측 컨트롤 그룹 묶기
+        const minBtn   = `<button class="music-card-minimize" title="최소화">−</button>`;
+        const closeBtn = `<button class="music-card-close" title="닫기">✕</button>`;
+        const playBtn  = `<button class="music-card-play" title="YouTube에서 열기">▶</button>`;
         const controls = `<div class="music-card-controls">${playBtn}${minBtn}${closeBtn}</div>`;
 
         let card = '';
 
         if (style === 'retro') {
             const reasonText = musicInfo.reason ? ` <span style="opacity:0.7; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
+            const marqueeContent = `<b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}`;
             card = `
             <div class="music-card-wrapper" id="${cardId}">
                 <div class="music-card-ipod">
                     <div class="ipod-icon">🎵</div>
                     <div class="ipod-screen">
-                        <marquee scrollamount="3" scrolldelay="0" class="ipod-marquee">
-                            <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
-                        </marquee>
+                        ${makeMarquee(marqueeContent, 'ipod-marquee')}
                     </div>
                     ${controls}
                 </div>
             </div>`;
         } else if (style === 'text') {
             const reasonText = musicInfo.reason ? ` <span style="opacity:0.6; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
+            const marqueeContent = `<b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}`;
             card = `
             <div class="music-card-wrapper" id="${cardId}">
                 <div class="music-card-airpods">
                     <div class="airpods-icon">🎧</div>
                     <div class="airpods-screen">
-                        <marquee scrollamount="3" scrolldelay="0" class="airpods-marquee">
-                            <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
-                        </marquee>
+                        ${makeMarquee(marqueeContent, 'airpods-marquee')}
                     </div>
                     ${controls}
                 </div>
@@ -362,9 +381,26 @@ ${recentChat}
             $('body').append('<div id="cmp-floating-container"></div>');
         }
         
-        // 카드가 갱신되면 미니마이즈 버튼은 숨기고 플로팅 컨테이너를 보여줌
         $('#cmp-minimized-btn').hide();
         $('#cmp-floating-container').html(card).show();
+
+        // ✨ 카드 렌더 후 버튼에 이벤트 바인딩 (모바일 호환)
+        // onclick 인라인 속성 대신 jQuery로 처리해서 모바일 터치 이벤트도 잡음
+        $(`#${cardId} .music-card-play`).on('click touchend', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            window._cmpOpen(watchUrl);
+        });
+        $(`#${cardId} .music-card-minimize`).on('click touchend', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            window._cmpMinimize();
+        });
+        $(`#${cardId} .music-card-close`).on('click touchend', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            window._cmpClose(cardId);
+        });
     }
 
     function escapeHtml(str) {
