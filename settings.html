@@ -51,14 +51,10 @@
                     <option value="custom">타사 API (OpenRouter 등)</option>
                 </select>
 
-    <div id="cmp-gemini-wrap" style="display: none; padding-left: 10px; border-left: 3px solid #ffb042; margin-bottom: 10px;">
-                    <div style="font-size:12px;margin-bottom:4px">Gemini 모델</div>
-                    <select id="cmp-gemini-model" style="padding:6px 8px;border-radius:6px; width:100%; background:var(--SmartThemeSecondaryBackgroundColor);">
-                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (권장)</option>
-                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                        <option value="gemini-2.0-pro-exp-02-05">Gemini 2.0 Pro (실험)</option>
-                    </select>
+   <div id="cmp-gemini-wrap" style="display: none; padding-left: 10px; border-left: 3px solid #ffb042; margin-bottom: 10px;">
+                    <div style="font-size:12px;margin-bottom:4px">Gemini 모델명 직접 입력</div>
+                    <input id="cmp-gemini-model" type="text" placeholder="예: gemini-1.5-flash" style="width:100%;padding:6px 8px;border-radius:6px;box-sizing:border-box; background:var(--SmartThemeSecondaryBackgroundColor);">
+                    <div style="font-size:10px;color:#888;margin-top:4px;">※ 구글 모델명은 수시로 변동되므로 직접 입력해 주세요. </div>
                 </div>
 
                 <div id="cmp-custom-wrap" style="display: none; padding-left: 10px; border-left: 3px solid #ffb042; margin-bottom: 10px;">
