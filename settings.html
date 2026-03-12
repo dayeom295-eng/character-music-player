@@ -5,43 +5,88 @@
             <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content" style="padding:12px 10px">
+            
             <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer">
                 <input type="checkbox" id="cmp-enabled" />
                 <span>확장 활성화</span>
             </label>
+            
             <div style="margin-bottom:10px">
                 <div style="font-size:12px;margin-bottom:4px">YouTube Data API 키</div>
-                <input type="text" id="cmp-apikey"
-                    placeholder="AIza... (없어도 동작)"
-                    style="width:100%;padding:6px 8px;border-radius:6px;box-sizing:border-box" />
+                <input type="text" id="cmp-apikey" placeholder="AIza... (없어도 동작)" style="width:100%;padding:6px 8px;border-radius:6px;box-sizing:border-box; background:var(--SmartThemeSecondaryBackgroundColor);" />
             </div>
+            
             <div style="margin-bottom:10px">
                 <div style="font-size:12px;margin-bottom:4px">카드 표시 최소 간격 (분)</div>
-                <input type="number" id="cmp-cooldown"
-                    min="1" max="60" value="3"
-                    style="width:70px;padding:6px 8px;border-radius:6px" />
+                <input type="number" id="cmp-cooldown" min="1" max="60" value="3" style="width:70px;padding:6px 8px;border-radius:6px; background:var(--SmartThemeSecondaryBackgroundColor);" />
             </div>
+            
             <div style="margin-bottom:10px">
                 <div style="font-size:12px;margin-bottom:4px">트리거 민감도</div>
-                <select id="cmp-sensitivity" style="padding:6px 8px;border-radius:6px">
+                <select id="cmp-sensitivity" style="padding:6px 8px;border-radius:6px; width:100%; background:var(--SmartThemeSecondaryBackgroundColor);">
                     <option value="low">낮음 (키워드 2개 이상)</option>
                     <option value="medium" selected>보통 (키워드 1개)</option>
-                    <option value="high">높음 (AI가 판단)</option>
+                    <option value="high">높음 (AI가 직접 판단)</option>
                 </select>
             </div>
+            
             <div style="margin-bottom:10px">
                 <div style="font-size:12px;margin-bottom:4px">카드 디자인</div>
-                <select id="cmp-cardstyle" style="padding:6px 8px;border-radius:6px">
-                    <option value="full">풀카드 (앨범아트 포함)</option>
-                    <option value="mini">미니 (작고 심플)</option>
-                    <option value="text">텍스트 (최소화)</option>
+                <select id="cmp-cardstyle" style="padding:6px 8px;border-radius:6px; width:100%; background:var(--SmartThemeSecondaryBackgroundColor);">
+                    <option value="full">1. 풀카드 (앨범아트 보임)</option>
+                    <option value="mini">2. LP판 (앨범아트 보임)</option>
+                    <option value="text">3. 에어팟 (앨범아트 안 보임)</option>
+                    <option value="retro">4. 레트로 (앨범아트 안 보임)</option>
                 </select>
             </div>
-            <div style="font-size:11px;color:#888;line-height:1.9">
-                🎵 <b>API 키 있음</b> — 앨범아트 표시, ▶ 클릭 시 YouTube 새 탭으로 재생<br>
-                🔗 <b>API 키 없음</b> — ▶ 클릭 시 YouTube 검색 결과 새 탭으로 열림<br>
+
+            <!-- ✨ 음악 추천용 전용 AI 설정 영역 -->
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="margin-bottom: 10px; font-size:13px; color:#ffb042;"><b>🤖 전용 AI 연결 (선택)</b></div>
+                
+                <div style="font-size:12px;margin-bottom:4px">연결할 API 선택</div>
+                <select id="cmp-api-provider" style="padding:6px 8px;border-radius:6px; width:100%; margin-bottom: 10px; background:var(--SmartThemeSecondaryBackgroundColor);">
+                    <option value="sillytavern">실리태번 메인 API (자동)</option>
+                    <option value="gemini">Google Gemini API</option>
+                    <option value="custom">타사 API (OpenRouter 등)</option>
+                </select>
+
+                <div id="cmp-gemini-wrap" style="display: none; padding-left: 10px; border-left: 3px solid #ffb042; margin-bottom: 10px;">
+                    <div style="font-size:12px;margin-bottom:4px">Gemini 모델</div>
+                    <select id="cmp-gemini-model" style="padding:6px 8px;border-radius:6px; width:100%; background:var(--SmartThemeSecondaryBackgroundColor);">
+                        <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option>
+                        <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro</option>
+                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                        <option value="gemini-2.5-pro-latest">Gemini 2.5 Pro</option>
+                        <option value="gemini-3.0-flash-latest">Gemini 3.0 Flash</option>
+                    </select>
+                </div>
+
+                <div id="cmp-custom-wrap" style="display: none; padding-left: 10px; border-left: 3px solid #ffb042; margin-bottom: 10px;">
+                    <div style="font-size:12px;margin-bottom:4px">API 엔드포인트 URL</div>
+                    <input id="cmp-custom-url" type="text" placeholder="예: https://openrouter.ai/api/v1/chat/completions" style="width:100%;padding:6px 8px;border-radius:6px;box-sizing:border-box; margin-bottom: 6px; background:var(--SmartThemeSecondaryBackgroundColor);">
+                    
+                    <div style="font-size:12px;margin-bottom:4px">모델명</div>
+                    <input id="cmp-custom-model" type="text" placeholder="예: google/gemini-2.5-pro" style="width:100%;padding:6px 8px;border-radius:6px;box-sizing:border-box; background:var(--SmartThemeSecondaryBackgroundColor);">
+                </div>
+
+                <div id="cmp-key-wrap" style="display: none; padding-left: 10px; border-left: 3px solid #ffb042;">
+                    <div style="font-size:12px;margin-bottom:4px">해당 API Key</div>
+                    <input id="cmp-api-key" type="password" placeholder="sk-..." style="width:100%;padding:6px 8px;border-radius:6px;box-sizing:border-box; background:var(--SmartThemeSecondaryBackgroundColor);">
+                </div>
+            </div>
+            
+            <!-- ✨ 테스트 및 설명 -->
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 15px 0;">
+            <button id="cmp-test-btn" class="menu_button" style="width:100%; padding: 8px; font-weight:bold; background: rgba(255, 69, 58, 0.2); border: 1px solid rgba(255, 69, 58, 0.5); border-radius: 6px; cursor: pointer;">
+                🎵 화면 출력 테스트 (가짜 카드 띄우기)
+            </button>
+            <div style="font-size:11px;color:#888;line-height:1.9;margin-top:10px">
+                🎵 <b>API 키 있음</b> — 앨범아트 표시, ▶ 클릭 시 YouTube 재생<br>
+                🔗 <b>API 키 없음</b> — ▶ 클릭 시 YouTube 검색 열림<br>
                 🎯 <b>높음</b> = AI가 매 응답마다 상황 직접 판단
             </div>
+            
         </div>
     </div>
 </div>
