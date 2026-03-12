@@ -4,22 +4,33 @@
   padding: 10px 0;
 }
 
-/* 카드가 말풍선 안쪽에 들어가므로, 글씨와 겹치지 않게 윗 여백 추가 */
-.music-card-wrapper {
+/* ✨ 하단 고정 컨테이너: 채팅 입력창 바로 위 중앙에 플로팅 */
+#cmp-floating-container {
+  position: fixed;
+  bottom: 85px; /* 실리태번 입력창 바로 위쪽 높이 */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000; /* 맨 앞으로 오게 설정 */
+  pointer-events: none; /* 빈 공간 클릭 방해 안 함 */
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  justify-content: center;
   width: 100%;
-  margin: 14px 0 4px 0; 
+}
+
+.music-card-wrapper {
+  pointer-events: auto; /* 카드 자체는 클릭 가능 */
+  margin: 0;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3)); /* 플로팅 그림자 효과 */
 }
 
 @keyframes musicCardSlideIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  from { opacity: 0; transform: translateY(15px) scale(0.95); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+
 /* ------------------------------------- */
-/* 1. 풀 카드 (기존 디자인 유지) */
+/* 1. 풀 카드 */
 /* ------------------------------------- */
 .music-card {
   display: flex; align-items: center; gap: 10px;
@@ -29,14 +40,12 @@
   animation: musicCardSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   border: 1px solid rgba(255,255,255,0.08);
 }
-
 .music-card-thumbnail { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .music-card-thumbnail-placeholder {
   width: 42px; height: 42px; border-radius: 8px; flex-shrink: 0;
   background: linear-gradient(135deg, #3a2a4a, #1a1a3a);
   display: flex; align-items: center; justify-content: center; font-size: 18px;
 }
-
 .music-card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .music-card-label {
   font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
@@ -46,90 +55,64 @@
   content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%;
   background: #ff453a; animation: pulseRed 1.8s ease-in-out infinite;
 }
-@keyframes pulseRed {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.5; transform: scale(0.8); }
-}
+@keyframes pulseRed { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
 .music-card-title { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.95); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .music-card-artist { font-size: 11px; color: rgba(255,255,255,0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+
 /* ------------------------------------- */
-/* 2. 미니 카드 (빙글빙글 LP 디자인) */
+/* 2. 미니 카드 (LP 레코드) */
 /* ------------------------------------- */
 @keyframes spinLP { 100% { transform: rotate(360deg); } }
-
 .music-card-lp {
   display: flex; align-items: center; gap: 12px;
   background: rgba(25, 25, 30, 0.95);
   border-radius: 12px; padding: 8px 12px;
   max-width: 250px; width: 100%;
   border: 1px solid rgba(255,255,255,0.1);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
   animation: musicCardSlideIn 0.4s ease;
 }
-
-.lp-container {
-  position: relative; width: 44px; height: 44px; flex-shrink: 0;
-}
-
+.lp-container { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
 .lp-cover {
   width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
   animation: spinLP 4s linear infinite;
   border: 2px solid #111;
   box-shadow: 0 0 5px rgba(0,0,0,0.5);
 }
-
 .lp-cover.placeholder {
   background: repeating-radial-gradient(#222, #222 2px, #111 3px, #111 4px);
   display: flex; align-items: center; justify-content: center; font-size: 16px;
 }
-
 .music-card-lp:hover .lp-cover { animation-play-state: paused; }
-
 .lp-hole {
   position: absolute; top: 50%; left: 50%;
   width: 8px; height: 8px; background: #252525;
   border: 1px solid #111; border-radius: 50%;
   transform: translate(-50%, -50%);
 }
-
 .lp-info { flex: 1; min-width: 0; }
 .lp-title { font-size: 12px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-artist { font-size: 10px; color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 
 /* ------------------------------------- */
-/* 3. 에어팟 카드 (iOS 팝업/위젯 감성) */
+/* 3. 에어팟 위젯 감성 */
 /* ------------------------------------- */
 .music-card-airpods {
   display: inline-flex; align-items: center; gap: 10px;
-  background: rgba(250, 250, 252, 0.9); /* 애플 느낌 반투명 화이트 */
+  background: rgba(250, 250, 252, 0.95);
   backdrop-filter: blur(12px);
   border-radius: 20px; padding: 6px 12px;
   border: 1px solid rgba(0,0,0,0.06);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
   animation: musicCardSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   max-width: 300px; width: 100%;
 }
-
-.airpods-icon {
-  font-size: 15px; flex-shrink: 0;
-  color: #1d1d1f; 
-}
-
-.airpods-screen {
-  flex: 1; min-width: 0; overflow: hidden;
-  color: #1d1d1f; /* 진한 회색 텍스트 */
-}
-
+.airpods-icon { font-size: 15px; flex-shrink: 0; color: #1d1d1f; }
+.airpods-screen { flex: 1; min-width: 0; overflow: hidden; color: #1d1d1f; }
 .airpods-marquee {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 12px; font-weight: 600;
-  letter-spacing: -0.2px;
-  display: block; width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px; font-weight: 600; letter-spacing: -0.2px; display: block; width: 100%;
 }
-
-/* 밝은 에어팟 테마에 맞게 버튼 디자인 변경 */
 .music-card-airpods .music-card-play, .music-card-airpods .music-card-close {
   background: rgba(0,0,0,0.05); border: none; color: #1d1d1f;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
@@ -139,14 +122,43 @@
 
 
 /* ------------------------------------- */
-/* 1, 2번 공통 버튼 디자인 (어두운 테마용) */
+/* ✨ 4. 레트로 아이팟 전광판 감성 (부활) */
+/* ------------------------------------- */
+.music-card-ipod {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(180deg, #d8d8dd, #b0b0b5); 
+  border-radius: 8px; padding: 6px 10px;
+  border: 1px solid #888;
+  animation: musicCardSlideIn 0.3s ease;
+  max-width: 320px; width: 100%;
+}
+.ipod-icon { font-size: 14px; flex-shrink: 0; color: #333; }
+.ipod-screen {
+  flex: 1; min-width: 0; overflow: hidden;
+  background: #9ea79c; /* 레트로 LCD 액정 */
+  color: #111; border-radius: 4px; padding: 4px 6px;
+  border: 1px inset rgba(0,0,0,0.3);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+}
+.ipod-marquee {
+  font-family: 'Courier New', monospace, sans-serif; 
+  font-size: 11.5px; font-weight: bold; letter-spacing: -0.3px; display: block; width: 100%;
+}
+.music-card-ipod .music-card-play, .music-card-ipod .music-card-close {
+  background: rgba(0,0,0,0.1); border-color: rgba(0,0,0,0.2); color: #333;
+}
+.music-card-ipod .music-card-play:hover { background: rgba(0,0,0,0.2); }
+.music-card-ipod .music-card-close:hover { background: rgba(255,70,70,0.3); color: #c00; }
+
+
+/* ------------------------------------- */
+/* 1, 2번 공통 버튼 디자인 (어두운 테마) */
 /* ------------------------------------- */
 .music-card .music-card-play, .music-card-lp .music-card-play {
   width: 30px; height: 30px; border-radius: 50%;
   background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.1);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  font-size: 11px; color: rgba(255,255,255,0.85); cursor: pointer;
-  transition: background 0.2s; line-height: 1; padding: 0;
+  font-size: 11px; color: rgba(255,255,255,0.85); cursor: pointer; transition: 0.2s; line-height: 1; padding: 0;
 }
 .music-card .music-card-play:hover, .music-card-lp .music-card-play:hover { background: rgba(255,255,255,0.22); }
 
@@ -154,8 +166,7 @@
   width: 22px; height: 22px; border-radius: 50%;
   background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  font-size: 10px; color: rgba(255,255,255,0.45); cursor: pointer;
-  transition: 0.15s; padding: 0; line-height: 1;
+  font-size: 10px; color: rgba(255,255,255,0.45); cursor: pointer; transition: 0.15s; padding: 0; line-height: 1;
 }
 .music-card .music-card-close:hover, .music-card-lp .music-card-close:hover { 
   background: rgba(255,70,70,0.22); color: rgba(255,120,120,0.95); border-color: rgba(255,70,70,0.3); 
