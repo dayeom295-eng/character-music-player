@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v1.8.1 — 모바일/태블릿 호환성 수정
+ * v1.8 — 신청곡 최우선 반영 & 접기/펴기(최소화) 모바일 호환성 패치
  */
 
 (async function () {
@@ -133,18 +133,13 @@
         $('#cmp-custom-model').on('input', function () { getSettings().customModel = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
 
-        // 전역 최소화 복구 버튼 삽입
+        // 전역 최소화 복구 버튼 삽입 (모바일 터치 오류 방지 위해 onclick 속성 제거)
         if ($('#cmp-minimized-btn').length === 0) {
             $('body').append('<div id="cmp-minimized-btn">🎵 음악 펴기</div>');
-            // 모바일 호환: onclick 대신 jQuery 이벤트 바인딩
-            $('#cmp-minimized-btn').on('click touchend', function(e) {
-                e.preventDefault();
-                window._cmpMaximize();
-            });
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8.1 (모바일 호환) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (신청곡 우선 & 접기/펴기 호환패치) ✅`);
     }
 
     async function getAiResponse(prompt, isJson = false) {
@@ -229,7 +224,6 @@
         } catch { return false; }
     }
 
-    // ✨ 신청곡 우선 반영 지침이 추가된 프롬프트
     async function requestMusic(text, context) {
         const charName = context.name2 || '캐릭터';
         const recentChat = (context.chat || []).slice(-6).map(m => `${m.is_user ? (context.name1 || 'User') : charName}: ${m.mes}`).join('\n');
@@ -268,81 +262,47 @@ ${recentChat}
         } catch { return fallback; }
     }
 
-    // ✨ 전역 함수: 닫기, 최소화, 최대화, 열기
-    window._cmpClose = function (cardId) { 
-        $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); 
-        $('#cmp-minimized-btn').hide();
-    };
-    
-    window._cmpMinimize = function () {
-        $('#cmp-floating-container').fadeOut(200, function() {
-            $('#cmp-minimized-btn').css('display', 'flex').hide().fadeIn(200);
-        });
-    };
-
-    window._cmpMaximize = function () {
-        $('#cmp-minimized-btn').fadeOut(200, function() {
-            $('#cmp-floating-container').fadeIn(200);
-        });
-    };
-
-    // ✨ 수정: 모바일에서 window.open 팝업 차단 우회
-    // 터치 이벤트에서 직접 호출되지 않는 경우 <a> 태그 클릭으로 대체
-    window._cmpOpen = function (url) {
-        try {
-            const a = document.createElement('a');
-            a.href = url;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        } catch (e) {
-            window.open(url, '_blank');
-        }
-    };
-
-    // ✨ 마퀴 HTML 생성 헬퍼 (<marquee> 대신 CSS 애니메이션 사용)
-    function makeMarquee(html, extraClass) {
-        return `<div class="cmp-marquee-wrapper"><span class="cmp-marquee-inner ${extraClass || ''}">${html}</span></div>`;
-    }
-
-    // 렌더링
+    // 렌더링 방식 (모바일 호환성을 위해 버튼에서 onclick 속성 제거하고 data 속성으로 변경)
     function renderCard(musicInfo, videoInfo, context, style) {
         const charName = context.name2 || '캐릭터';
         const cardId   = `cmp-card-${Date.now()}`;
         const watchUrl = videoInfo?.watchUrl || '#';
         const thumb = videoInfo?.thumbnail;
 
+        // ✨ 최소화 버튼 추가 (모바일 호환)
         const minBtn   = `<button class="music-card-minimize" title="최소화">−</button>`;
-        const closeBtn = `<button class="music-card-close" title="닫기">✕</button>`;
-        const playBtn  = `<button class="music-card-play" title="YouTube에서 열기">▶</button>`;
+        const closeBtn = `<button class="music-card-close" data-id="${cardId}" title="닫기">✕</button>`;
+        const playBtn  = `<button class="music-card-play" data-url="${escapeHtml(watchUrl)}" title="YouTube에서 열기">▶</button>`;
+        
+        // 우측 컨트롤 그룹 묶기
         const controls = `<div class="music-card-controls">${playBtn}${minBtn}${closeBtn}</div>`;
 
         let card = '';
 
         if (style === 'retro') {
             const reasonText = musicInfo.reason ? ` <span style="opacity:0.7; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
-            const marqueeContent = `<b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}`;
             card = `
             <div class="music-card-wrapper" id="${cardId}">
                 <div class="music-card-ipod">
                     <div class="ipod-icon">🎵</div>
                     <div class="ipod-screen">
-                        ${makeMarquee(marqueeContent, 'ipod-marquee')}
+                        <marquee scrollamount="3" scrolldelay="0" class="ipod-marquee">
+                            <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
+                        </marquee>
                     </div>
                     ${controls}
                 </div>
             </div>`;
         } else if (style === 'text') {
             const reasonText = musicInfo.reason ? ` <span style="opacity:0.6; font-weight:normal;">(${escapeHtml(musicInfo.reason)})</span>` : '';
-            const marqueeContent = `<b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}`;
             card = `
             <div class="music-card-wrapper" id="${cardId}">
                 <div class="music-card-airpods">
                     <div class="airpods-icon">🎧</div>
                     <div class="airpods-screen">
-                        ${makeMarquee(marqueeContent, 'airpods-marquee')}
+                        <marquee scrollamount="3" scrolldelay="0" class="airpods-marquee">
+                            <b>${escapeHtml(musicInfo.title)}</b> — ${escapeHtml(musicInfo.artist)} ${reasonText}
+                        </marquee>
                     </div>
                     ${controls}
                 </div>
@@ -383,29 +343,36 @@ ${recentChat}
         
         $('#cmp-minimized-btn').hide();
         $('#cmp-floating-container').html(card).show();
-
-        // ✨ 카드 렌더 후 버튼에 이벤트 바인딩 (모바일 호환)
-        // onclick 인라인 속성 대신 jQuery로 처리해서 모바일 터치 이벤트도 잡음
-        $(`#${cardId} .music-card-play`).on('click touchend', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            window._cmpOpen(watchUrl);
-        });
-        $(`#${cardId} .music-card-minimize`).on('click touchend', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            window._cmpMinimize();
-        });
-        $(`#${cardId} .music-card-close`).on('click touchend', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            window._cmpClose(cardId);
-        });
     }
 
     function escapeHtml(str) {
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+
+    // ✨ 모바일 터치 호환성을 위한 jQuery 이벤트 위임 (인라인 onclick 대체)
+    $(document).on('click', '.music-card-close', function () {
+        const cardId = $(this).attr('data-id');
+        $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); 
+        $('#cmp-minimized-btn').hide(); 
+    });
+
+    $(document).on('click', '.music-card-minimize', function () {
+        $('#cmp-floating-container').fadeOut(200, function() {
+            $('#cmp-minimized-btn').fadeIn(200);
+        });
+    });
+
+    $(document).on('click', '.music-card-play', function () {
+        const url = $(this).attr('data-url');
+        if (url) window.open(url, '_blank');
+    });
+
+    $(document).on('click', '#cmp-minimized-btn', function () {
+        $(this).fadeOut(200, function() {
+            $('#cmp-floating-container').fadeIn(200);
+        });
+    });
+
     initExtension();
 })();
