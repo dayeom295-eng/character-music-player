@@ -37,25 +37,17 @@
                     </button>
                 </div>
                 
-                <!-- 숨겨진 도움말 박스 -->
                 <div id="cmp-help-box" class="cmp-help-content">
                     <div class="cmp-help-title">앨범아트가 보이게 하려면? 🔑 (무료/선택)</div>
                     <ol class="cmp-help-list">
-                        <li><a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> 접속</li>
-                        <li>새 프로젝트 생성</li>
+                        <li><a href="https://console.cloud.google.com/" target="_blank">Google Cloud</a> 접속 & 프로젝트 생성</li>
                         <li><b>API 및 서비스 > 라이브러리</b>에서 <code>YouTube Data API v3</code> 활성화</li>
                         <li><b>사용자 인증 정보</b>에서 <code>API 키</code> 생성 후 아래에 입력</li>
                     </ol>
-                    <div class="cmp-help-quote">
-                        💡 하루 10,000 유닛 무료 (검색 1회 = 100유닛 &rarr; <b>하루 100회</b>)
-                    </div>
+                    <div class="cmp-help-quote">💡 검색 1회 = 100유닛 &rarr; <b>무료 기준 하루 100회 재생</b></div>
                 </div>
 
                 <input type="text" id="cmp-apikey" class="cmp-input" placeholder="AIza... (입력하지 않아도 동작)" autocomplete="off" />
-                <div class="cmp-hint">
-                    🎵 <b>키 있음</b> — 앨범아트 표시 및 유튜브 재생<br>
-                    🔗 <b>키 없음</b> — 앨범아트 없음, 유튜브 검색으로 대체
-                </div>
             </div>
 
             <!-- 쿨다운 -->
@@ -88,8 +80,38 @@
                 </select>
             </div>
 
+            <!-- 🟢 [신규] 확장 전용 커스텀 API 설정 영역 -->
+            <div class="cmp-section" style="margin-top: 4px; padding-top: 12px; border-top: 1px dashed #eaeaea;">
+                <div class="cmp-label-wrapper">
+                    <div class="cmp-label" style="color:#0066cc;">🤖 뮤직 플레이어 전용 AI 설정</div>
+                    <button id="cmp-ai-help-toggle" class="cmp-help-btn" style="color:#0066cc; background:#eef5fc;">
+                        <i class="fa-solid fa-gear"></i> 설정
+                    </button>
+                </div>
+                
+                <div id="cmp-ai-box" class="cmp-help-content" style="background:#fff; border:1px solid #cce0f5; display:none;">
+                    <select id="cmp-api-provider" class="cmp-select" style="margin-bottom:8px; border-color:#cce0f5; font-weight:600;">
+                        <option value="main">실리태번 메인 API (기본 연동)</option>
+                        <option value="openrouter">OpenRouter</option>
+                        <option value="gemini">Google Gemini</option>
+                        <option value="openai">OpenAI (GPT)</option>
+                        <option value="claude">Anthropic (Claude)</option>
+                        <option value="custom">기타 커스텀 (OpenAI 호환)</option>
+                    </select>
+                    
+                    <div id="cmp-custom-fields" style="display:none; flex-direction:column; gap:6px;">
+                        <input type="password" id="cmp-api-key" class="cmp-input" placeholder="API Key (또는 토큰)" autocomplete="off" />
+                        <input type="text" id="cmp-api-model" class="cmp-input" placeholder="정확한 모델명 입력 (예: gemini-1.5-flash)" autocomplete="off" />
+                        <input type="text" id="cmp-api-endpoint" class="cmp-input" placeholder="커스텀 Endpoint URL 입력" style="display:none;" autocomplete="off" />
+                        <div class="cmp-hint" style="background:#f4f9ff; border-color:#b3d4f5;">
+                            💡 실리태번 모델 목록과 무관하게 <b>모델의 정식 명칭</b>을 직접 입력해야 작동합니다. (기본 API 사용 시엔 입력 불필요)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 테스트 버튼 -->
-            <button id="cmp-test-btn"><i class="fa-solid fa-play"></i> 화면 출력 미리보기</button>
+            <button id="cmp-test-btn"><i class="fa-solid fa-play"></i> 음악 추천 & 카드 출력 테스트</button>
             
         </div>
     </div>
