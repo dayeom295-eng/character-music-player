@@ -1,195 +1,76 @@
-<div id="music-player-settings">
-    <div class="inline-drawer">
-        <div class="inline-drawer-toggle inline-drawer-header">
-            <b>🎵 Character Music Player</b>
-            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
-        </div>
-        <div class="inline-drawer-content">
-            <style>
-                #cmp-settings-panel {
-                    padding: 14px 12px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                }
-                #cmp-toggle-row {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: 6px 2px 10px;
-                    border-bottom: 1px solid var(--SmartThemeBorderColor, rgba(127,127,127,0.15));
-                    margin-bottom: 4px;
-                }
-                #cmp-toggle-label {
-                    font-size: 13px;
-                    font-weight: 600;
-                    color: var(--SmartThemeBodyColor);
-                }
-                /* 커스텀 토글 스위치 */
-                .cmp-switch {
-                    position: relative;
-                    width: 40px;
-                    height: 22px;
-                    cursor: pointer;
-                    flex-shrink: 0;
-                }
-                .cmp-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
-                .cmp-switch-track {
-                    position: absolute;
-                    inset: 0;
-                    background: rgba(127,127,127,0.25);
-                    border-radius: 11px;
-                    transition: background 0.2s;
-                }
-                .cmp-switch-track::after {
-                    content: '';
-                    position: absolute;
-                    top: 3px; left: 3px;
-                    width: 16px; height: 16px;
-                    background: #fff;
-                    border-radius: 50%;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-                    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-                }
-                .cmp-switch input:checked + .cmp-switch-track { background: var(--SmartThemeBodyColor); }
-                .cmp-switch input:checked + .cmp-switch-track::after { transform: translateX(18px); }
+<!-- 1. ST 좌측 메뉴에 삽입될 버튼 -->
+<div id="cmp-open-btn-wrapper" style="display:none;">
+    <div id="cmp-open-btn" class="menu_button" title="Character Music Player">
+        <i class="fa-solid fa-music"></i> Music Player 설정
+    </div>
+</div>
 
-                /* 섹션 */
-                .cmp-section {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 5px;
-                    padding: 8px 0;
-                    border-bottom: 1px solid var(--SmartThemeBorderColor, rgba(127,127,127,0.1));
-                }
-                .cmp-section:last-of-type { border-bottom: none; }
-                .cmp-label {
-                    font-size: 10.5px;
-                    font-weight: 700;
-                    letter-spacing: 0.6px;
-                    text-transform: uppercase;
-                    color: var(--SmartThemeBodyColor);
-                    opacity: 0.45;
-                }
-                /* 인풋/셀렉트 */
-                .cmp-input, .cmp-select {
-                    padding: 7px 10px;
-                    font-size: 12.5px;
-                    font-family: inherit;
-                    color: var(--SmartThemeBodyColor);
-                    background: var(--SmartThemeBackgroundColor);
-                    border: 1.5px solid var(--SmartThemeBorderColor, rgba(127,127,127,0.25));
-                    border-radius: 8px;
-                    outline: none;
-                    box-sizing: border-box;
-                    transition: border-color 0.18s;
-                    appearance: none;
-                    -webkit-appearance: none;
-                    width: 100%;
-                }
-                .cmp-input:focus, .cmp-select:focus {
-                    border-color: var(--SmartThemeBodyColor);
-                }
-                .cmp-input::placeholder { opacity: 0.35; }
-                .cmp-input-sm { width: 68px; text-align: center; }
-                .cmp-select {
-                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-                    background-repeat: no-repeat;
-                    background-position: right 10px center;
-                    padding-right: 28px;
-                    cursor: pointer;
-                }
-                .cmp-inline { display: flex; align-items: center; gap: 8px; }
-                .cmp-unit { font-size: 12px; opacity: 0.5; color: var(--SmartThemeBodyColor); }
-                /* 힌트 */
-                .cmp-hint {
-                    font-size: 11px;
-                    color: var(--SmartThemeBodyColor);
-                    opacity: 0.5;
-                    line-height: 1.65;
-                    padding: 6px 10px;
-                    background: var(--SmartThemeSecondaryBackgroundColor);
-                    border-radius: 7px;
-                    border-left: 2px solid var(--SmartThemeBorderColor, rgba(127,127,127,0.3));
-                }
-                .cmp-hint b { opacity: 1; font-weight: 600; color: var(--SmartThemeBodyColor); }
-                /* 테스트 버튼 */
-                #cmp-test-btn {
-                    margin-top: 6px;
-                    width: 100%;
-                    padding: 10px;
-                    font-size: 12.5px;
-                    font-weight: 700;
-                    font-family: inherit;
-                    color: var(--SmartThemeBodyColor);
-                    background: var(--SmartThemeSecondaryBackgroundColor);
-                    border: 1.5px solid var(--SmartThemeBorderColor, rgba(127,127,127,0.25));
-                    border-radius: 10px;
-                    cursor: pointer;
-                    transition: opacity 0.18s, transform 0.1s;
-                }
-                #cmp-test-btn:hover  { opacity: 0.75; }
-                #cmp-test-btn:active { transform: scale(0.98); }
-            </style>
-
-            <div id="cmp-settings-panel">
-
-                <!-- 활성화 토글 -->
-                <div id="cmp-toggle-row">
-                    <span id="cmp-toggle-label">확장 활성화</span>
-                    <label class="cmp-switch">
-                        <input type="checkbox" id="cmp-enabled" />
-                        <span class="cmp-switch-track"></span>
-                    </label>
-                </div>
-
-                <!-- YouTube API 키 -->
-                <div class="cmp-section">
-                    <div class="cmp-label">YouTube Data API 키</div>
-                    <input type="text" id="cmp-apikey" class="cmp-input" placeholder="AIza... (없어도 동작)" autocomplete="off" />
-                    <div class="cmp-hint">
-                        🎵 <b>키 있음</b> — 앨범아트 표시, ▶ 클릭 시 YouTube 재생<br>
-                        🔗 <b>키 없음</b> — 앨범아트 생략, ▶ 클릭 시 YouTube 검색 열림
-                    </div>
-                </div>
-
-                <!-- 쿨다운 -->
-                <div class="cmp-section">
-                    <div class="cmp-label">카드 표시 최소 간격</div>
-                    <div class="cmp-inline">
-                        <input type="number" id="cmp-cooldown" class="cmp-input cmp-input-sm" min="1" max="60" value="3" />
-                        <span class="cmp-unit">분</span>
-                    </div>
-                </div>
-
-                <!-- 트리거 민감도 -->
-                <div class="cmp-section">
-                    <div class="cmp-label">트리거 민감도</div>
-                    <select id="cmp-sensitivity" class="cmp-select">
-                        <option value="low">낮음 (키워드 2개 이상)</option>
-                        <option value="medium" selected>보통 (키워드 1개)</option>
-                        <option value="high">높음 (AI가 직접 판단)</option>
-                    </select>
-                    <div class="cmp-hint">
-                        🎯 <b>높음</b> = AI가 매 응답마다 상황 직접 판단
-                    </div>
-                </div>
-
-                <!-- 카드 디자인 -->
-                <div class="cmp-section">
-                    <div class="cmp-label">카드 디자인</div>
-                    <select id="cmp-cardstyle" class="cmp-select">
-                        <option value="full">풀카드 (앨범아트 보임)</option>
-                        <option value="mini">LP판 (앨범아트 보임)</option>
-                        <option value="text">에어팟 (앨범아트 안 보임)</option>
-                        <option value="retro">레트로 (앨범아트 안 보임)</option>
-                    </select>
-                </div>
-
-                <!-- 테스트 버튼 -->
-                <button id="cmp-test-btn">🎵 화면 출력 테스트 (미리보기)</button>
-
+<!-- 2. 화면에 떠오르는 모노톤 플로팅 패널 -->
+<div id="cmp-panel">
+    <div id="cmp-panel-inner">
+        <!-- 헤더 -->
+        <div id="cmp-panel-header">
+            <div id="cmp-panel-title">
+                <i class="fa-solid fa-headphones"></i> Music Settings
             </div>
+            <button id="cmp-panel-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- 본문 -->
+        <div id="cmp-panel-body">
+            
+            <!-- 활성화 토글 -->
+            <div class="cmp-row-toggle">
+                <span class="cmp-row-label">뮤직 플레이어 켜기</span>
+                <label class="cmp-switch">
+                    <input type="checkbox" id="cmp-enabled" />
+                    <span class="cmp-switch-track"></span>
+                </label>
+            </div>
+
+            <!-- YouTube API 키 -->
+            <div class="cmp-section">
+                <div class="cmp-label">YouTube Data API 키</div>
+                <input type="text" id="cmp-apikey" class="cmp-input" placeholder="AIza... (입력하지 않아도 동작)" autocomplete="off" />
+                <div class="cmp-hint">
+                    🎵 <b>키 있음</b> — 앨범아트 표시 및 유튜브 재생<br>
+                    🔗 <b>키 없음</b> — 앨범아트 없음, 유튜브 검색으로 대체
+                </div>
+            </div>
+
+            <!-- 쿨다운 -->
+            <div class="cmp-section">
+                <div class="cmp-label">카드 팝업 최소 간격</div>
+                <div class="cmp-inline">
+                    <input type="number" id="cmp-cooldown" class="cmp-input cmp-input-sm" min="1" max="60" value="3" />
+                    <span class="cmp-unit">분 마다</span>
+                </div>
+            </div>
+
+            <!-- 트리거 민감도 -->
+            <div class="cmp-section">
+                <div class="cmp-label">음악 재생 민감도</div>
+                <select id="cmp-sensitivity" class="cmp-select">
+                    <option value="low">낮음 (단어 2개 이상 일치)</option>
+                    <option value="medium" selected>보통 (단어 1개 일치)</option>
+                    <option value="high">높음 (AI가 맥락 직접 판단)</option>
+                </select>
+            </div>
+
+            <!-- 카드 디자인 -->
+            <div class="cmp-section">
+                <div class="cmp-label">플레이어 디자인</div>
+                <select id="cmp-cardstyle" class="cmp-select">
+                    <option value="full">1. 다크 풀카드 (기본)</option>
+                    <option value="mini">2. 미니 LP 턴테이블</option>
+                    <option value="text">3. 에어팟 라이트</option>
+                    <option value="retro">4. 레트로 전광판</option>
+                </select>
+            </div>
+
+            <!-- 테스트 버튼 -->
+            <button id="cmp-test-btn"><i class="fa-solid fa-play"></i> 화면 출력 미리보기</button>
+            
         </div>
     </div>
 </div>
