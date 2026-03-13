@@ -20,7 +20,7 @@
         cooldownMinutes: 3,
         triggerSensitivity: 'medium',
         cardStyle: 'full',
-        customApiProvider: 'main', // main, openrouter, gemini, openai, claude, custom
+        customApiProvider: 'main', // main, openrouter, gemini, openai, custom
         customApiKey: '',
         customApiModel: '',
         customApiEndpoint: ''
@@ -120,7 +120,7 @@
         // 테스트 버튼
         $('#cmp-test-btn').on('click', async function () {
             const btn = $(this);
-            btn.html('<i class="fa-solid fa-spinner fa-spin"></i> 추천 음악 생각 중...');
+            btn.html('<i class="fa-solid fa-spinner fa-spin"></i> 연결 중...');
             btn.prop('disabled', true);
             
             const dummyPrompt = `이건 시스템 테스트야. 무조건 아래 JSON 형식으로만 답해.\n{"title":"테스트 곡 제목","artist":"테스트 가수","reason":"연결 성공!"}`;
@@ -189,29 +189,6 @@
                 const data = await res.json();
                 if (data.error) throw new Error(data.error.message);
                 return data.candidates[0].content.parts[0].text;
-            }
-
-            // [Anthropic Claude]
-            if (provider === 'claude') {
-                const url = 'https://api.anthropic.com/v1/messages';
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'x-api-key': key,
-                        'anthropic-version': '2023-06-01',
-                        'anthropic-dangerously-allow-browser': 'true', // 브라우저 CORS 우회 핵심
-                        'content-type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model: model,
-                        max_tokens: 300,
-                        temperature: 0.7,
-                        messages: [{ role: 'user', content: prompt }]
-                    })
-                });
-                const data = await res.json();
-                if (data.error) throw new Error(data.error.message);
-                return data.content[0].text;
             }
 
             // [OpenRouter, OpenAI, Custom (OAI 호환)]
