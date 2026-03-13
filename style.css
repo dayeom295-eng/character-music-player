@@ -188,7 +188,18 @@
 .cmp-help-list { margin: 0; padding-left: 18px; margin-bottom: 10px; line-height: 1.6; }
 .cmp-help-list a { color: #0066cc; text-decoration: none; }
 .cmp-help-list a:hover { text-decoration: underline; }
-.cmp-help-list code { background: #e0e0e0; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 10.5px; }
+
+/* ✨ 코드 태그 부분 수정 (흰색 테마에 맞게 폰트색 고정) ✨ */
+.cmp-help-list code { 
+  background: #e5e5e5; 
+  color: #111 !important;  /* 진한 검은색으로 강제 고정 */
+  padding: 2px 6px; 
+  border-radius: 4px; 
+  font-family: ui-monospace, SFMono-Regular, monospace; 
+  font-size: 11px; 
+  font-weight: 600; /* 글씨 굵게 */
+}
+
 .cmp-help-quote { background: #fff; padding: 8px 10px; border-radius: 8px; border-left: 3px solid #000; color: #555; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 
 /* 공통 입력 필드 */
@@ -307,7 +318,7 @@
 .music-card-title { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.95); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .music-card-artist { font-size: 11px; color: rgba(255,255,255,0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* 미니카드(LP) */
+/* LP판 */
 @keyframes spinLP { 100% { transform: rotate(360deg); } }
 .music-card-lp { display: flex; align-items: center; gap: 12px; background: rgba(25,25,30,0.95); border-radius: 12px; padding: 8px 12px; max-width: 290px; width: 100%; border: 1px solid rgba(255,255,255,0.1); animation: musicCardSlideIn 0.4s ease; }
 .lp-container { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
