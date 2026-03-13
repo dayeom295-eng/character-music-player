@@ -45,57 +45,9 @@
     async function initExtension() {
         const s = getSettings();
 
-        // ✨ 플로팅 설정 패널을 body에 직접 주입
-        const panelHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
-        $(document.body).append(panelHtml);
-
-        // ✨ 확장 탭에는 최소한의 안내만 표시
-        $('#extensions_settings').append(`
-            <div style="padding:8px 0">
-                <div class="inline-drawer">
-                    <div class="inline-drawer-toggle inline-drawer-header">
-                        <b>🎵 Character Music Player</b>
-                        <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
-                    </div>
-                    <div class="inline-drawer-content" style="padding:10px 12px; font-size:12px; opacity:0.75; line-height:1.7">
-                        입력창 옆 <b>🎵</b> 버튼을 눌러 설정을 여세요.<br>
-                        <span style="opacity:0.6">v1.9 · Character Music Player</span>
-                    </div>
-                </div>
-            </div>
-        `);
-
-        // ✨ ≡ 메뉴(leftSendMenu) 안에 항목 주입
-        // 메뉴는 열릴 때마다 내용이 바뀔 수 있으므로 MutationObserver로 감시
-        function injectMenuBtn() {
-            if ($('#cmp-open-btn').length) return;
-            const $menu = $('#leftSendMenu');
-            if (!$menu.length) return;
-            const $btn = $('<div id="cmp-open-btn" title="Music Player 설정"><span>🎵</span> Music Player</div>');
-            $menu.append($btn);
-        }
-
-        // ≡ 버튼 클릭 시 즉시 주입 (메뉴가 열리는 시점에 확실히 삽입)
-        $(document).on('click', '#options_button, #leftSendMenuButton, [id*="option_button"]', function () {
-            setTimeout(injectMenuBtn, 0);
-        });
-
-        // MutationObserver: #leftSendMenu 자식이 바뀔 때마다 항목 재주입
-        function startMenuObserver() {
-            const menu = document.getElementById('leftSendMenu');
-            if (menu) {
-                new MutationObserver(injectMenuBtn).observe(menu, { childList: true, subtree: true });
-                injectMenuBtn();
-            } else {
-                // leftSendMenu가 아직 없으면 body에서 생성될 때 감지
-                const bo = new MutationObserver(function () {
-                    const m = document.getElementById('leftSendMenu');
-                    if (m) { bo.disconnect(); startMenuObserver(); }
-                });
-                bo.observe(document.body, { childList: true, subtree: false });
-            }
-        }
-        startMenuObserver();
+        // 원래 방식 그대로: extensions_settings에 주입
+        const settingsHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
+        $('#extensions_settings').append(settingsHtml);
 
         // UI 값 초기화
         $('#cmp-enabled').prop('checked', s.enabled);
@@ -110,25 +62,6 @@
         $('#cmp-cooldown').on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
         $('#cmp-sensitivity').on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
         $('#cmp-cardstyle').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
-
-        // 패널 열기/닫기
-        $(document).on('click', '#cmp-open-btn', function (e) {
-            e.stopPropagation();
-            $('#cmp-panel').toggleClass('cmp-panel-open');
-        });
-        $(document).on('click', '#cmp-panel-close', function () {
-            $('#cmp-panel').removeClass('cmp-panel-open');
-        });
-        // 패널 바깥 클릭 시 닫기
-        $(document).on('click', function (e) {
-            if (!$(e.target).closest('#cmp-panel, #cmp-open-btn').length) {
-                $('#cmp-panel').removeClass('cmp-panel-open');
-            }
-        });
-        // 패널 내부 클릭은 전파 중단 (닫힘 방지)
-        $(document).on('click', '#cmp-panel', function (e) {
-            e.stopPropagation();
-        });
 
         // 테스트 버튼
         $('#cmp-test-btn').on('click', async function () {
@@ -146,16 +79,14 @@
                     console.log("[CMP] AI 원본 응답:", resText);
                     return;
                 }
-                toastr.success("연결 완벽 성공! UI를 띄웁니다.", "Music Player");
+                toastr.success("연결 성공! UI를 띄웁니다.", "Music Player");
                 renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, { name2: "테스터" }, getSettings().cardStyle || 'full');
-                $('#cmp-panel').removeClass('cmp-panel-open');
             } catch (error) {
                 toastr.error("오류 발생! F12 콘솔창을 확인하세요.", "Music Player 오류");
                 console.error("[CMP] 테스트 버튼 오류:", error);
             }
         });
 
-        // 최소화 버튼
         if ($('#cmp-minimized-btn').length === 0) {
             $(document.body).append('<div id="cmp-minimized-btn">🎵 음악 펴기</div>');
         }
