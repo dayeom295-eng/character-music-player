@@ -348,19 +348,34 @@
 .music-card .music-card-play, .music-card-lp .music-card-play, .music-card .music-card-minimize, .music-card-lp .music-card-minimize, .music-card .music-card-close, .music-card-lp .music-card-close { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; color: rgba(255,255,255,0.85); cursor: pointer; transition: 0.2s; line-height: 1; padding: 0; }
 .music-card .music-card-play { width: 30px; height: 30px; }
 
-/* 🟢 파일 맨 아래에 다음 미디어 쿼리(모바일/태블릿 대응)를 추가해 주세요 */
+/* ─────────────────────────────────────────────
+   📱 모바일/태블릿 화면용 반응형 대응 (800px 이하)
+───────────────────────────────────────────── */
 @media screen and (max-width: 800px) {
   #cmp-panel {
-    /* 모바일에서는 하단/좌측 여백 무시하고 화면 정중앙에 배치 */
-    bottom: auto;
-    top: 50%;
+    top: 55%; /* ST 상단바에 가려지지 않게 정중앙보다 아주 살짝 아래로 기준점 조정 */
     left: 50%;
-    /* 열리기 전 상태 (살짝 아래에서 위로) */
-    transform: translate(-50%, -45%) scale(0.98); 
+    bottom: auto; /* PC 버전의 bottom 속성 무효화 */
+    width: 92vw;
+    max-width: 360px;
+    transform: translate(-50%, -40%) scale(0.98); /* 열리기 전 위치 */
   }
   
   #cmp-panel.cmp-panel-open {
-    /* 열렸을 때 정확히 정중앙에 고정 */
     transform: translate(-50%, -50%) scale(1);
+  }
+
+  /* 🟢 핵심: 창 높이가 화면을 넘어가지 않게 제한 */
+  #cmp-panel-inner {
+    max-height: 75vh; /* 화면 높이의 75%까지만 커지도록 제한 (키보드나 상하단바 여백 확보) */
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 🟢 핵심: 내용이 넘치면 내부에서 부드럽게 스크롤되도록 처리 */
+  #cmp-panel-body {
+    overflow-y: auto; 
+    overscroll-behavior: contain; /* 내부 스크롤 시 뒤쪽 채팅창이 같이 움직이는 현상 방지 */
+    padding-bottom: 24px; /* 맨 아래 스크롤 여유 공간 */
   }
 }
