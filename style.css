@@ -1,27 +1,309 @@
 /* ===== Character Music Player Extension ===== */
 
-#music-player-settings { padding: 10px 0; }
+/* ─────────────────────────────────────────────
+   🎵 툴바 버튼 (입력창 옆 주입)
+───────────────────────────────────────────── */
+#cmp-open-btn {
+  background: none !important;
+  border: none !important;
+  font-size: 17px;
+  line-height: 1;
+  padding: 5px 7px;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+#cmp-open-btn:hover {
+  opacity: 1;
+  background: rgba(127,127,127,0.12) !important;
+}
 
-/* ✨ 전 기기(PC/모바일) 상단 고정 플로팅 컨테이너 */
+/* ─────────────────────────────────────────────
+   🎵 플로팅 설정 패널
+───────────────────────────────────────────── */
+#cmp-panel {
+  position: fixed;
+  bottom: 82px;
+  left: 16px;
+  width: 296px;
+  z-index: 2147483646;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px) scale(0.97);
+  transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+#cmp-panel.cmp-panel-open {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+#cmp-panel-inner {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.07),
+    0 8px 24px rgba(0,0,0,0.11),
+    0 24px 48px rgba(0,0,0,0.07);
+  overflow: hidden;
+  font-family: 'DM Sans', 'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  color: #111;
+}
+
+/* 헤더 */
+#cmp-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+#cmp-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #111;
+}
+#cmp-panel-close {
+  background: none;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #888;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+#cmp-panel-close:hover {
+  background: #f2f2f2;
+  color: #111;
+}
+
+/* 이퀄라이저 애니메이션 */
+#cmp-eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 13px;
+  flex-shrink: 0;
+}
+#cmp-eq span {
+  width: 3px;
+  background: #111;
+  border-radius: 1.5px;
+  transform-origin: bottom;
+  animation: cmpEqBounce 1s ease-in-out infinite;
+}
+#cmp-eq span:nth-child(1) { height: 7px;  animation-delay: 0s; }
+#cmp-eq span:nth-child(2) { height: 11px; animation-delay: 0.18s; }
+#cmp-eq span:nth-child(3) { height: 5px;  animation-delay: 0.36s; }
+#cmp-eq span:nth-child(4) { height: 9px;  animation-delay: 0.54s; }
+@keyframes cmpEqBounce {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.4; }
+  50%       { transform: scaleY(1);   opacity: 1; }
+}
+
+/* 바디 */
+#cmp-panel-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* 구분선 */
+.cmp-sep {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 10px 0;
+}
+
+/* 활성화 토글 행 */
+.cmp-row-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0 4px;
+}
+.cmp-row-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111;
+}
+
+/* 커스텀 스위치 */
+.cmp-switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cmp-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.cmp-switch-track {
+  position: absolute;
+  inset: 0;
+  background: #ddd;
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+.cmp-switch-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cmp-switch input:checked + .cmp-switch-track {
+  background: #111;
+}
+.cmp-switch input:checked + .cmp-switch-track::after {
+  transform: translateX(18px);
+}
+
+/* 설정 섹션 */
+.cmp-section {
+  padding: 6px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cmp-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #999;
+}
+
+/* 인풋 공통 */
+.cmp-input,
+.cmp-select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: #111;
+  background: #f7f7f7;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 8px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.18s, background 0.18s;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.cmp-input:focus,
+.cmp-select:focus {
+  border-color: #111;
+  background: #fff;
+}
+.cmp-input::placeholder { color: #bbb; }
+
+.cmp-input-sm {
+  width: 64px;
+  text-align: center;
+}
+
+.cmp-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cmp-unit {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+}
+
+/* 셀렉트 화살표 */
+.cmp-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+/* 힌트 노트 */
+.cmp-note {
+  font-size: 11px;
+  color: #999;
+  line-height: 1.65;
+  padding: 6px 10px;
+  background: #f7f7f7;
+  border-radius: 7px;
+  border-left: 2px solid #ddd;
+}
+.cmp-note b {
+  color: #555;
+  font-weight: 600;
+}
+
+/* 테스트 버튼 */
+#cmp-test-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-family: inherit;
+  letter-spacing: 0.1px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+  margin-top: 2px;
+}
+#cmp-test-btn:hover  { background: #333; }
+#cmp-test-btn:active { transform: scale(0.98); }
+
+
+/* ─────────────────────────────────────────────
+   🎵 플로팅 뮤직 카드 컨테이너
+───────────────────────────────────────────── */
 #cmp-floating-container {
   position: fixed !important;
-  top: 65px !important;     /* 화면 위쪽에 배치 (상단 메뉴바 바로 아래) */
-  bottom: auto !important;  /* 하단 배치 속성 완전 제거 */
+  top: 65px !important;
+  bottom: auto !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
   z-index: 2147483647 !important;
-  pointer-events: none !important; 
+  pointer-events: none !important;
   display: flex;
   justify-content: center;
   align-items: center;
   width: max-content;
-  max-width: 95vw;          /* 화면 밖으로 안 나가게 방지 */
+  max-width: 95vw;
 }
 
-/* ✨ 최소화 복구 버튼 (우측 상단 플로팅) */
+/* 최소화 복구 버튼 */
 #cmp-minimized-btn {
   position: fixed !important;
-  top: 70px !important;     /* 최소화 버튼도 상단으로 이동 */
+  top: 70px !important;
   bottom: auto !important;
   right: 25px;
   background: rgba(40, 40, 45, 0.85);
@@ -39,28 +321,22 @@
   transition: background 0.2s, transform 0.2s;
   pointer-events: auto !important;
 }
-#cmp-minimized-btn:hover { background: rgba(60, 60, 65, 0.95); transform: scale(1.05); }
-
-/* 모바일 화면에서는 버튼이 화면 밖으로 나가지 않도록 우측 여백만 살짝 줄임 */
+#cmp-minimized-btn:hover { background: rgba(60,60,65,0.95); transform: scale(1.05); }
 @media screen and (max-width: 800px) {
-  #cmp-minimized-btn {
-    right: 15px !important;
-  }
+  #cmp-minimized-btn { right: 15px !important; }
 }
 
 .music-card-wrapper {
-  pointer-events: auto !important; 
+  pointer-events: auto !important;
   margin: 0;
-  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3)); 
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3));
 }
 
-/* 카드가 위에서 아래로 스르륵 내려오는 애니메이션 */
 @keyframes musicCardSlideIn {
-  from { opacity: 0; transform: translateY(-15px) scale(0.95); } 
+  from { opacity: 0; transform: translateY(-15px) scale(0.95); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* 컨트롤 버튼 그룹 가로 정렬 */
 .music-card-controls {
   display: flex;
   align-items: center;
@@ -68,9 +344,7 @@
   margin-left: auto;
 }
 
-/* ------------------------------------- */
-/* 1. 풀 카드 */
-/* ------------------------------------- */
+/* ─── 1. 풀 카드 ─── */
 .music-card {
   display: flex; align-items: center; gap: 10px;
   background: linear-gradient(135deg, rgba(30,30,35,0.97) 0%, rgba(45,40,55,0.97) 100%);
@@ -92,13 +366,11 @@
 .music-card-title { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.95); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .music-card-artist { font-size: 11px; color: rgba(255,255,255,0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ------------------------------------- */
-/* 2. 미니 카드 (LP) */
-/* ------------------------------------- */
+/* ─── 2. 미니 카드 (LP) ─── */
 @keyframes spinLP { 100% { transform: rotate(360deg); } }
 .music-card-lp {
   display: flex; align-items: center; gap: 12px;
-  background: rgba(25, 25, 30, 0.95); border-radius: 12px; padding: 8px 12px;
+  background: rgba(25,25,30,0.95); border-radius: 12px; padding: 8px 12px;
   max-width: 290px; width: 100%; border: 1px solid rgba(255,255,255,0.1);
   animation: musicCardSlideIn 0.4s ease;
 }
@@ -106,19 +378,17 @@
 .lp-cover { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; animation: spinLP 4s linear infinite; border: 2px solid #111; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
 .lp-cover.placeholder { background: repeating-radial-gradient(#222, #222 2px, #111 3px, #111 4px); display: flex; align-items: center; justify-content: center; font-size: 16px; }
 .music-card-lp:hover .lp-cover { animation-play-state: paused; }
-.lp-hole { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: #252525; border: 1px solid #111; border-radius: 50%; transform: translate(-50%, -50%); }
+.lp-hole { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: #252525; border: 1px solid #111; border-radius: 50%; transform: translate(-50%,-50%); }
 .lp-info { flex: 1; min-width: 0; }
 .lp-title { font-size: 12px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lp-artist { font-size: 10px; color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ------------------------------------- */
-/* 3. 에어팟 감성 & 4. 레트로 전광판 */
-/* ------------------------------------- */
+/* ─── 3. 에어팟 & 4. 레트로 ─── */
 .music-card-airpods {
   display: inline-flex; align-items: center; gap: 10px;
-  background: rgba(250, 250, 252, 0.95); backdrop-filter: blur(12px);
+  background: rgba(250,250,252,0.95); backdrop-filter: blur(12px);
   border-radius: 20px; padding: 6px 12px; border: 1px solid rgba(0,0,0,0.06);
-  animation: musicCardSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: musicCardSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
   max-width: 320px; width: 100%;
 }
 .airpods-icon { font-size: 15px; flex-shrink: 0; color: #1d1d1f; }
@@ -136,9 +406,7 @@
 .ipod-marquee { font-family: 'Courier New', monospace; font-size: 11.5px; font-weight: bold; letter-spacing: -0.3px; display: block; width: 100%; }
 .music-card-ipod .music-card-play, .music-card-ipod .music-card-minimize, .music-card-ipod .music-card-close { background: rgba(0,0,0,0.1); border-color: rgba(0,0,0,0.2); color: #333; }
 
-/* ------------------------------------- */
-/* 어두운 테마 버튼 공통 설정 */
-/* ------------------------------------- */
+/* ─── 어두운 카드 버튼 공통 ─── */
 .music-card .music-card-play, .music-card-lp .music-card-play,
 .music-card .music-card-minimize, .music-card-lp .music-card-minimize,
 .music-card .music-card-close, .music-card-lp .music-card-close {
