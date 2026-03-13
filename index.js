@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v2.0 - 좌측 메뉴 편입 및 모던 화이트 플로팅 UI 도입
+ * v2.0 - 좌측 메뉴 편입, 화이트 UI, API 발급 도움말 토글 추가
  */
 
 (async function () {
@@ -53,12 +53,11 @@
         $('body').append($html.filter('#cmp-panel'));
 
         // 3. ST 입력창 좌측 햄버거 메뉴(#options)에 버튼 삽입
-        // 문서가 준비되었을 때 options 메뉴 안의 제일 끝에 버튼 추가
         setTimeout(() => {
             const menuBtn = $html.filter('#cmp-open-btn-wrapper').html();
             $('#options').append(menuBtn);
             
-            // 버튼 클릭 시 ST 기본 메뉴 닫고, 커스텀 패널 열기
+            // 버튼 클릭 시 커스텀 패널 열기
             $('#cmp-open-btn').on('click', function (e) {
                 e.stopPropagation();
                 
@@ -67,19 +66,19 @@
                     panel.removeClass('cmp-panel-open');
                 } else {
                     panel.addClass('cmp-panel-open');
-                    // ST 자체 옵션 메뉴 닫기
+                    // ST 기본 햄버거 메뉴 닫기
                     $('#options').hide();
                     $('#options_button').removeClass('active');
                 }
             });
-        }, 1000); // UI 로딩 대기
+        }, 1000); 
 
         // 4. 패널 닫기 버튼 이벤트
         $('#cmp-panel-close').on('click', () => {
             $('#cmp-panel').removeClass('cmp-panel-open');
         });
 
-        // 5. 패널 외부 클릭 시 패널 닫기 UX
+        // 5. 패널 외부 클릭 시 패널 닫기
         $(document).on('click', function(e) {
             if ($('#cmp-panel').hasClass('cmp-panel-open')) {
                 if (!$(e.target).closest('#cmp-panel').length && !$(e.target).closest('#cmp-open-btn').length) {
@@ -88,14 +87,19 @@
             }
         });
 
-        // 6. UI 값 초기화 및 저장 이벤트 바인딩
+        // 6. UI 값 초기화 및 저장 이벤트
         $('#cmp-enabled').prop('checked', s.enabled).on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
         $('#cmp-apikey').val(s.youtubeApiKey || '').on('input', function () { getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-cooldown').val(s.cooldownMinutes).on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
         $('#cmp-sensitivity').val(s.triggerSensitivity).on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
         $('#cmp-cardstyle').val(s.cardStyle || 'full').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
 
-        // 7. 화면 출력 테스트
+        // 💡 7. 도움말 아코디언 토글 애니메이션
+        $('#cmp-help-toggle').on('click', function() {
+            $('#cmp-help-box').slideToggle(200);
+        });
+
+        // 8. 화면 출력 테스트 버튼
         $('#cmp-test-btn').on('click', async function () {
             const btn = $(this);
             btn.html('<i class="fa-solid fa-spinner fa-spin"></i> 테스트 중...');
@@ -115,7 +119,7 @@
                 toastr.success("연결 성공! UI를 띄웁니다.", "Music Player");
                 renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, { name2: "테스터" }, getSettings().cardStyle || 'full');
                 
-                // 성공 시 패널 살짝 닫아주기 (카드가 잘 보이도록)
+                // 성공 시 패널 살짝 닫아주기
                 $('#cmp-panel').removeClass('cmp-panel-open');
             } catch (error) {
                 toastr.error("오류 발생! 콘솔창을 확인하세요.", "Music Player 오류");
@@ -129,7 +133,7 @@
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v2.0 (모던 화이트 UI 적용) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v2.1.0 (화이트 UI & 아코디언 도움말) ✅`);
     }
 
     async function getAiResponse(prompt) {
