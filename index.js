@@ -141,7 +141,7 @@
             } catch (error) {
                 toastr.error("오류 발생! 콘솔창을 확인하세요.", "Music Player 오류");
             } finally {
-                btn.html('<i class="fa-solid fa-play"></i> 음악 추천 & 카드 출력 테스트');
+                btn.html('<i class="fa-solid fa-play"></i> 연결 테스트');
                 btn.prop('disabled', false);
             }
         });
