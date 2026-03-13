@@ -1,6 +1,6 @@
 /**
- * Character Music 시그니처 Player
- * v1.9
+ * Character Music Player
+ * v1.8
  */
 
 (async function () {
@@ -65,20 +65,24 @@
             </div>
         `);
 
-        // ✨ 입력창 툴바에 🎵 버튼 주입
-        // SillyTavern 버전별로 다른 셀렉터를 순서대로 시도
-        if ($('#cmp-open-btn').length === 0) {
-            const $btn = $('<button id="cmp-open-btn" title="Music Player 설정">🎵</button>');
-            if ($('#leftSendMenu').length) {
-                $('#leftSendMenu').append($btn);
-            } else if ($('#options-bar').length) {
-                $('#options-bar').prepend($btn);
-            } else if ($('#send_form').length) {
-                $('#send_form').prepend($btn);
-            } else {
-                $(document.body).append($btn.css({ position:'fixed', bottom:'20px', left:'16px', zIndex:2147483640 }));
-            }
+        // ✨ ≡ 메뉴(leftSendMenu 팝업) 안에 항목으로 주입
+        // leftSendMenu는 클릭 시 동적으로 열리므로 이미 DOM에 존재하는 경우가 많음
+        function injectMenuBtn() {
+            if ($('#cmp-open-btn').length) return; // 이미 주입됨
+            const $menu = $('#leftSendMenu');
+            if (!$menu.length) return;
+            const $btn = $(`
+                <div id="cmp-open-btn" title="Music Player 설정">
+                    <span>🎵</span> Music Player
+                </div>
+            `);
+            $menu.append($btn);
         }
+
+        // DOM 준비 후 즉시 시도, 혹시 메뉴가 나중에 렌더링될 경우 짧게 재시도
+        injectMenuBtn();
+        setTimeout(injectMenuBtn, 500);
+        setTimeout(injectMenuBtn, 1500);
 
         // UI 값 초기화
         $('#cmp-enabled').prop('checked', s.enabled);
@@ -129,7 +133,7 @@
                     console.log("[CMP] AI 원본 응답:", resText);
                     return;
                 }
-                toastr.success("연결 완벽 성공! UI를 띄웁니다.", "Music Player");
+                toastr.success("연결 성공! UI를 띄웁니다.", "Music Player");
                 renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, { name2: "테스터" }, getSettings().cardStyle || 'full');
                 $('#cmp-panel').removeClass('cmp-panel-open');
             } catch (error) {
@@ -144,7 +148,7 @@
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.9 ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 ✅`);
     }
 
     async function getAiResponse(prompt) {
