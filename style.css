@@ -353,29 +353,37 @@
 ───────────────────────────────────────────── */
 @media screen and (max-width: 800px) {
   #cmp-panel {
-    top: 55%; /* ST 상단바에 가려지지 않게 정중앙보다 아주 살짝 아래로 기준점 조정 */
-    left: 50%;
-    bottom: auto; /* PC 버전의 bottom 속성 무효화 */
-    width: 92vw;
-    max-width: 360px;
-    transform: translate(-50%, -40%) scale(0.98); /* 열리기 전 위치 */
+    /* PC 설정 완벽 초기화 (기존 bottom 속성 무력화) */
+    bottom: auto !important;
+    right: auto !important;
+    
+    /* 모바일 화면 정중앙 고정 */
+    top: 50% !important;
+    left: 50% !important;
+    width: 92vw !important;
+    max-width: 360px !important;
+    
+    /* 열리기 전 살짝 아래에 있는 애니메이션 상태 */
+    transform: translate(-50%, -45%) scale(0.95) !important;
   }
   
   #cmp-panel.cmp-panel-open {
-    transform: translate(-50%, -50%) scale(1);
+    /* 열렸을 때 흔들림 없이 "정중앙"에 못 박기 */
+    transform: translate(-50%, -50%) scale(1) !important;
   }
 
-  /* 🟢 핵심: 창 높이가 화면을 넘어가지 않게 제한 */
   #cmp-panel-inner {
-    max-height: 75vh; /* 화면 높이의 75%까지만 커지도록 제한 (키보드나 상하단바 여백 확보) */
-    display: flex;
-    flex-direction: column;
+    /* 창 높이가 화면의 75%를 절대 넘지 못하게 강제 */
+    max-height: 75vh !important; 
+    display: flex !important;
+    flex-direction: column !important;
   }
 
-  /* 🟢 핵심: 내용이 넘치면 내부에서 부드럽게 스크롤되도록 처리 */
   #cmp-panel-body {
-    overflow-y: auto; 
-    overscroll-behavior: contain; /* 내부 스크롤 시 뒤쪽 채팅창이 같이 움직이는 현상 방지 */
-    padding-bottom: 24px; /* 맨 아래 스크롤 여유 공간 */
+    /* 내용이 길면 무조건 내부에서 스크롤 되도록 강제 */
+    overflow-y: auto !important; 
+    -webkit-overflow-scrolling: touch !important; /* 모바일 부드러운 스크롤 */
+    overscroll-behavior: contain !important;
+    padding-bottom: 24px !important;
   }
 }
