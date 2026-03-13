@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v2.0 - 좌측 메뉴 편입, 화이트 UI, API 발급 도움말 토글 추가
+ * v2.1 - 확장 전용 커스텀 API & 모델 다이렉트 연동 기능 추가
  */
 
 (async function () {
@@ -13,12 +13,17 @@
 
     const EXTENSION_NAME = 'character-music-player';
 
+    // 🟢 커스텀 API를 위한 기본 설정값 추가
     const DEFAULT_SETTINGS = Object.freeze({
         enabled: true,
         youtubeApiKey: '',
         cooldownMinutes: 3,
         triggerSensitivity: 'medium',
-        cardStyle: 'full'
+        cardStyle: 'full',
+        customApiProvider: 'main', // main, openrouter, gemini, openai, claude, custom
+        customApiKey: '',
+        customApiModel: '',
+        customApiEndpoint: ''
     });
 
     const TRIGGER_PATTERNS = [
@@ -44,48 +49,34 @@
 
     async function initExtension() {
         const s = getSettings();
-
-        // 1. HTML 템플릿 로드
         const htmlText = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
         const $html = $(htmlText);
 
-        // 2. 바디에 플로팅 패널 삽입
         $('body').append($html.filter('#cmp-panel'));
 
-       // 3. ST 입력창 좌측 햄버거 메뉴(#options)에 버튼 삽입
         setTimeout(() => {
             const menuBtn = $html.filter('#cmp-open-btn-wrapper').html();
             $('#options').append(menuBtn);
             
-            // 버튼 클릭 시 커스텀 패널 열기
             $('#cmp-open-btn').on('click', function (e) {
                 e.stopPropagation();
-                
                 const panel = $('#cmp-panel');
                 if (panel.hasClass('cmp-panel-open')) {
                     panel.removeClass('cmp-panel-open');
                 } else {
                     panel.addClass('cmp-panel-open');
-                    
-                    // --- ST 햄버거 메뉴 및 모바일 UI 닫기 처리 ---
                     $('#options').hide();
                     $('#options_button').removeClass('active');
-                    
-                    // 🟢 모바일/태블릿 환경: ST 좌측 메뉴(Drawer)를 완전히 닫아줌
                     if ($(window).width() <= 800) {
-                        $('#left-nav').removeClass('mobileslide'); // 좌측 패널 닫기
-                        $('.nav-overlay').click(); // 어두운 배경 오버레이 클릭(제거) 처리
+                        $('#left-nav').removeClass('mobileslide');
+                        $('.nav-overlay').click();
                     }
                 }
             });
         }, 1000);
 
-        // 4. 패널 닫기 버튼 이벤트
-        $('#cmp-panel-close').on('click', () => {
-            $('#cmp-panel').removeClass('cmp-panel-open');
-        });
+        $('#cmp-panel-close').on('click', () => $('#cmp-panel').removeClass('cmp-panel-open'));
 
-        // 5. 패널 외부 클릭 시 패널 닫기
         $(document).on('click', function(e) {
             if ($('#cmp-panel').hasClass('cmp-panel-open')) {
                 if (!$(e.target).closest('#cmp-panel').length && !$(e.target).closest('#cmp-open-btn').length) {
@@ -94,28 +85,49 @@
             }
         });
 
-        // 6. UI 값 초기화 및 저장 이벤트
+        // 기본 UI 이벤트 바인딩
         $('#cmp-enabled').prop('checked', s.enabled).on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
         $('#cmp-apikey').val(s.youtubeApiKey || '').on('input', function () { getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced(); });
         $('#cmp-cooldown').val(s.cooldownMinutes).on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
         $('#cmp-sensitivity').val(s.triggerSensitivity).on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
         $('#cmp-cardstyle').val(s.cardStyle || 'full').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
 
-        // 💡 7. 도움말 아코디언 토글 애니메이션
-        $('#cmp-help-toggle').on('click', function() {
-            $('#cmp-help-box').slideToggle(200);
-        });
+        $('#cmp-help-toggle').on('click', () => $('#cmp-help-box').slideToggle(200));
+        $('#cmp-ai-help-toggle').on('click', () => $('#cmp-ai-box').slideToggle(200));
 
-        // 8. 화면 출력 테스트 버튼
+        // 🟢 신규: 커스텀 API 설정 바인딩
+        function toggleCustomFields(val) {
+            if (val === 'main') {
+                $('#cmp-custom-fields').hide();
+            } else {
+                $('#cmp-custom-fields').css('display', 'flex');
+                if (val === 'custom') $('#cmp-api-endpoint').show();
+                else $('#cmp-api-endpoint').hide();
+            }
+        }
+        
+        $('#cmp-api-provider').val(s.customApiProvider || 'main').on('change', function() {
+            getSettings().customApiProvider = this.value;
+            saveSettingsDebounced();
+            toggleCustomFields(this.value);
+        });
+        $('#cmp-api-key').val(s.customApiKey).on('input', function() { getSettings().customApiKey = this.value.trim(); saveSettingsDebounced(); });
+        $('#cmp-api-model').val(s.customApiModel).on('input', function() { getSettings().customApiModel = this.value.trim(); saveSettingsDebounced(); });
+        $('#cmp-api-endpoint').val(s.customApiEndpoint).on('input', function() { getSettings().customApiEndpoint = this.value.trim(); saveSettingsDebounced(); });
+        
+        toggleCustomFields(s.customApiProvider || 'main');
+
+        // 테스트 버튼
         $('#cmp-test-btn').on('click', async function () {
             const btn = $(this);
-            btn.html('<i class="fa-solid fa-spinner fa-spin"></i> 테스트 중...');
+            btn.html('<i class="fa-solid fa-spinner fa-spin"></i> 추천 음악 생각 중...');
+            btn.prop('disabled', true);
             
             const dummyPrompt = `이건 시스템 테스트야. 무조건 아래 JSON 형식으로만 답해.\n{"title":"테스트 곡 제목","artist":"테스트 가수","reason":"연결 성공!"}`;
             try {
                 const resText = await getAiResponse(dummyPrompt);
                 if (!resText) {
-                    toastr.error("실리태번 메인 API 응답이 없습니다.", "Music Player 오류");
+                    toastr.error("API 응답이 없거나 키/모델명이 잘못되었습니다.", "Music Player 오류");
                     return;
                 }
                 const parsed = parseJsonSafely(resText);
@@ -125,13 +137,12 @@
                 }
                 toastr.success("연결 성공! UI를 띄웁니다.", "Music Player");
                 renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, { name2: "테스터" }, getSettings().cardStyle || 'full');
-                
-                // 성공 시 패널 살짝 닫아주기
                 $('#cmp-panel').removeClass('cmp-panel-open');
             } catch (error) {
                 toastr.error("오류 발생! 콘솔창을 확인하세요.", "Music Player 오류");
             } finally {
-                btn.html('<i class="fa-solid fa-play"></i> 화면 출력 미리보기');
+                btn.html('<i class="fa-solid fa-play"></i> 음악 추천 & 카드 출력 테스트');
+                btn.prop('disabled', false);
             }
         });
 
@@ -140,12 +151,108 @@
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v2.1.0 (화이트 UI & 아코디언 도움말) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v2.1.0 (다이렉트 커스텀 API 연동) ✅`);
     }
 
+    // 🟢 [핵심] 독립된 API 통신 로직 (ST 메인망 완벽 우회)
     async function getAiResponse(prompt) {
-        const { generateQuietPrompt } = SillyTavern.getContext();
-        try { return await generateQuietPrompt(prompt); } catch (e) { return null; }
+        const s = getSettings();
+        const provider = s.customApiProvider || 'main';
+
+        // 1. ST 메인 API 사용
+        if (provider === 'main') {
+            const { generateQuietPrompt } = SillyTavern.getContext();
+            try { return await generateQuietPrompt(prompt); } catch (e) { return null; }
+        }
+
+        // 2. 커스텀 API 다이렉트 호출
+        const key = s.customApiKey;
+        const model = s.customApiModel;
+        
+        if (!key || !model) {
+            toastr.warning("확장 설정에서 커스텀 API Key와 모델명을 모두 입력해주세요.", "Music Player");
+            return null;
+        }
+
+        try {
+            // [Google Gemini]
+            if (provider === 'gemini') {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 0.7 }
+                    })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error.message);
+                return data.candidates[0].content.parts[0].text;
+            }
+
+            // [Anthropic Claude]
+            if (provider === 'claude') {
+                const url = 'https://api.anthropic.com/v1/messages';
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'x-api-key': key,
+                        'anthropic-version': '2023-06-01',
+                        'anthropic-dangerously-allow-browser': 'true', // 브라우저 CORS 우회 핵심
+                        'content-type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        max_tokens: 300,
+                        temperature: 0.7,
+                        messages: [{ role: 'user', content: prompt }]
+                    })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error.message);
+                return data.content[0].text;
+            }
+
+            // [OpenRouter, OpenAI, Custom (OAI 호환)]
+            let endpoint = '';
+            let headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${key}`
+            };
+
+            if (provider === 'openrouter') {
+                endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+                headers['HTTP-Referer'] = window.location.href;
+                headers['X-Title'] = 'SillyTavern Music Player';
+            } else if (provider === 'openai') {
+                endpoint = 'https://api.openai.com/v1/chat/completions';
+            } else if (provider === 'custom') {
+                endpoint = s.customApiEndpoint;
+                if (!endpoint) {
+                    toastr.warning("커스텀 엔드포인트 URL을 입력해주세요.", "Music Player");
+                    return null;
+                }
+            }
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.7
+                })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error.message);
+            return data.choices[0].message.content;
+
+        } catch (error) {
+            console.error("[Music Player] Custom API Error:", error);
+            toastr.error(`연결 실패: ${error.message}`, "Music Player API 오류");
+            return null;
+        }
     }
 
     function parseJsonSafely(text) {
