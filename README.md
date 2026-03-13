@@ -1,4 +1,4 @@
-# 🎵 Character Music Player v1.9
+# 🎵 Character Music Player v2.0
 
 캐릭터의 감정/상황에 따라 어울리는 음악을 카드로 표시하는 SillyTavern 확장입니다.
 
