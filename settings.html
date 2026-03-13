@@ -11,7 +11,7 @@
         <!-- 헤더 -->
         <div id="cmp-panel-header">
             <div id="cmp-panel-title">
-                <i class="fa-solid fa-headphones"></i> Music Settings
+                <i class="fa-solid fa-headphones"></i> Music Player Settings
             </div>
             <button id="cmp-panel-close"><i class="fa-solid fa-xmark"></i></button>
         </div>
@@ -33,8 +33,8 @@
                 <div class="cmp-label">YouTube Data API 키</div>
                 <input type="text" id="cmp-apikey" class="cmp-input" placeholder="AIza... (입력하지 않아도 동작)" autocomplete="off" />
                 <div class="cmp-hint">
-                    🎵 <b>키 있음</b> — 앨범아트 표시 및 유튜브 재생<br>
-                    🔗 <b>키 없음</b> — 앨범아트 없음, 유튜브 검색으로 대체
+                    🎵 <b>키 있음</b> — 앨범아트 표시, ▶ 클릭 시 YouTube 재생<br>
+                    🔗 <b>키 없음</b> — 앨범아트 생략, ▶ 클릭 시 YouTube 검색 열림
                 </div>
             </div>
 
@@ -61,10 +61,10 @@
             <div class="cmp-section">
                 <div class="cmp-label">플레이어 디자인</div>
                 <select id="cmp-cardstyle" class="cmp-select">
-                    <option value="full">1. 다크 풀카드 (기본)</option>
-                    <option value="mini">2. 미니 LP 턴테이블</option>
-                    <option value="text">3. 에어팟 라이트</option>
-                    <option value="retro">4. 레트로 전광판</option>
+                    <option value="full">1. 풀카드 (앨범아트 보임)</option>
+                    <option value="mini">2. LP판 (앨범아트 보임)</option>
+                    <option value="text">3. 에어팟 (앨범아트 안 보임)</option>
+                    <option value="retro">4. 레트로 (앨범아트 안 보임)</option>
                 </select>
             </div>
 
