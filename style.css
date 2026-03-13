@@ -353,36 +353,36 @@
 ───────────────────────────────────────────── */
 @media screen and (max-width: 800px) {
   #cmp-panel {
-    /* PC 설정 완벽 초기화 (기존 bottom 속성 무력화) */
+    /* 🟢 기존 애매한 중앙 정렬 속성 전부 파기 */
     bottom: auto !important;
-    right: auto !important;
     
-    /* 모바일 화면 정중앙 고정 */
-    top: 50% !important;
+    /* 🟢 무조건 화면 꼭대기에서 20% 아래로 강제로 끌어내림 (절대 안 짤림) */
+    top: 20vh !important; 
     left: 50% !important;
-    width: 92vw !important;
+    width: 90vw !important;
     max-width: 360px !important;
     
-    /* 열리기 전 살짝 아래에 있는 애니메이션 상태 */
-    transform: translate(-50%, -45%) scale(0.95) !important;
+    /* 🟢 Y축(위아래) 이동 제거! 오직 가로축(X축) 중앙 정렬만 수행 */
+    transform: translateX(-50%) scale(0.95) !important;
+    transform-origin: top center !important; /* 애니메이션이 위에서 아래로 뻗어나가도록 수정 */
   }
   
   #cmp-panel.cmp-panel-open {
-    /* 열렸을 때 흔들림 없이 "정중앙"에 못 박기 */
-    transform: translate(-50%, -50%) scale(1) !important;
+    /* 🟢 열렸을 때도 위아래 위치를 건드리지 않음 */
+    transform: translateX(-50%) scale(1) !important;
   }
 
   #cmp-panel-inner {
-    /* 창 높이가 화면의 75%를 절대 넘지 못하게 강제 */
-    max-height: 75vh !important; 
+    /* 🟢 창이 아무리 길어져도 아래로만 길어지며, 화면 높이의 65%를 넘지 못하게 차단 */
+    max-height: 65vh !important; 
     display: flex !important;
     flex-direction: column !important;
   }
 
   #cmp-panel-body {
-    /* 내용이 길면 무조건 내부에서 스크롤 되도록 강제 */
+    /* 내부 스크롤 처리 */
     overflow-y: auto !important; 
-    -webkit-overflow-scrolling: touch !important; /* 모바일 부드러운 스크롤 */
+    -webkit-overflow-scrolling: touch !important; 
     overscroll-behavior: contain !important;
     padding-bottom: 24px !important;
   }
