@@ -1,181 +1,78 @@
-<div id="music-player-settings">
-    <div class="inline-drawer">
-        <div class="inline-drawer-toggle inline-drawer-header">
-            <b>🎵 Character Music Player</b>
-            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
-        </div>
-        <div class="inline-drawer-content">
+<div id="cmp-panel">
+    <div id="cmp-panel-inner">
 
-            <style>
-                #cmp-settings-panel {
-                    padding: 14px 12px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                    color: var(--SmartThemeBodyColor);
-                }
-
-                /* ── 활성화 토글 행 ── */
-                #cmp-toggle-row {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    background: var(--SmartThemeSecondaryBackgroundColor);
-                    border: 1px solid var(--SmartThemeBorderColor, rgba(127,127,127,0.2));
-                    border-radius: 10px;
-                    padding: 10px 14px;
-                    margin-bottom: 4px;
-                }
-                #cmp-toggle-row span {
-                    font-size: 13px;
-                    font-weight: 600;
-                    color: var(--SmartThemeBodyColor);
-                }
-
-                /* ── 구분선 ── */
-                .cmp-divider {
-                    height: 1px;
-                    background: var(--SmartThemeBorderColor, rgba(127,127,127,0.2));
-                    margin: 6px 0;
-                }
-
-                /* ── 설정 필드 공통 ── */
-                .cmp-field {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                    padding: 10px 14px;
-                    background: var(--SmartThemeSecondaryBackgroundColor);
-                    border: 1px solid var(--SmartThemeBorderColor, rgba(127,127,127,0.2));
-                    border-radius: 10px;
-                }
-
-                .cmp-field-label {
-                    font-size: 11px;
-                    font-weight: 700;
-                    letter-spacing: 0.8px;
-                    text-transform: uppercase;
-                    opacity: 0.5;
-                    color: var(--SmartThemeBodyColor);
-                }
-
-                .cmp-field input[type="text"],
-                .cmp-field input[type="number"],
-                .cmp-field select {
-                    background: var(--SmartThemeBackgroundColor);
-                    border: 1px solid var(--SmartThemeBorderColor, rgba(127,127,127,0.3));
-                    border-radius: 7px;
-                    color: var(--SmartThemeBodyColor);
-                    padding: 7px 10px;
-                    font-size: 12.5px;
-                    outline: none;
-                    transition: border-color 0.2s;
-                    box-sizing: border-box;
-                }
-                .cmp-field input[type="text"] { width: 100%; }
-                .cmp-field input[type="number"] { width: 72px; }
-                .cmp-field select { width: 100%; }
-                .cmp-field input:focus,
-                .cmp-field select:focus {
-                    border-color: var(--SmartThemeQuoteColor, #e05);
-                }
-
-                /* ── 인라인 힌트 ── */
-                .cmp-hint {
-                    font-size: 11px;
-                    color: var(--SmartThemeBodyColor);
-                    opacity: 0.6;
-                    line-height: 1.7;
-                    padding: 7px 10px;
-                    background: var(--SmartThemeBackgroundColor);
-                    border-left: 2px solid var(--SmartThemeQuoteColor, #e05);
-                    border-radius: 0 6px 6px 0;
-                }
-                .cmp-hint b {
-                    opacity: 1;
-                    color: var(--SmartThemeBodyColor);
-                    font-weight: 600;
-                }
-
-                /* ── 테스트 버튼 ── */
-                #cmp-test-btn {
-                    width: 100%;
-                    padding: 10px;
-                    font-size: 12.5px;
-                    font-weight: 700;
-                    letter-spacing: 0.3px;
-                    background: var(--SmartThemeSecondaryBackgroundColor);
-                    border: 1px solid var(--SmartThemeBorderColor, rgba(127,127,127,0.3));
-                    border-radius: 10px;
-                    color: var(--SmartThemeBodyColor);
-                    cursor: pointer;
-                    transition: opacity 0.2s, transform 0.1s;
-                }
-                #cmp-test-btn:hover {
-                    opacity: 0.8;
-                    transform: translateY(-1px);
-                }
-                #cmp-test-btn:active {
-                    transform: translateY(0);
-                }
-            </style>
-
-            <div id="cmp-settings-panel">
-
-                <!-- 활성화 토글 -->
-                <div id="cmp-toggle-row">
-                    <span>확장 활성화</span>
-                    <input type="checkbox" id="cmp-enabled" />
+        <!-- Header -->
+        <div id="cmp-panel-header">
+            <div id="cmp-panel-title">
+                <div id="cmp-eq" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span>
                 </div>
-
-                <!-- YouTube API 키 -->
-                <div class="cmp-field">
-                    <div class="cmp-field-label">YouTube Data API 키</div>
-                    <input type="text" id="cmp-apikey" placeholder="AIza... (없어도 동작)" />
-                    <div class="cmp-hint">
-                        🎵 <b>키 있음</b> — 앨범아트 표시, ▶ 클릭 시 YouTube 재생<br>
-                        🔗 <b>키 없음</b> — 앨범아트 생략, ▶ 클릭 시 YouTube 검색 열림
-                    </div>
-                </div>
-
-                <!-- 쿨다운 -->
-                <div class="cmp-field">
-                    <div class="cmp-field-label">카드 표시 최소 간격 (분)</div>
-                    <input type="number" id="cmp-cooldown" min="1" max="60" value="3" />
-                </div>
-
-                <!-- 트리거 민감도 -->
-                <div class="cmp-field">
-                    <div class="cmp-field-label">트리거 민감도</div>
-                    <select id="cmp-sensitivity">
-                        <option value="low">낮음 (키워드 2개 이상)</option>
-                        <option value="medium" selected>보통 (키워드 1개)</option>
-                        <option value="high">높음 (AI가 직접 판단)</option>
-                    </select>
-                    <div class="cmp-hint">
-                        🎯 <b>높음</b> = AI가 매 응답마다 상황 직접 판단
-                    </div>
-                </div>
-
-                <!-- 카드 디자인 -->
-                <div class="cmp-field">
-                    <div class="cmp-field-label">카드 디자인</div>
-                    <select id="cmp-cardstyle">
-                        <option value="full">1. 풀카드 (앨범아트 보임)</option>
-                        <option value="mini">2. LP판 (앨범아트 보임)</option>
-                        <option value="text">3. 에어팟 (앨범아트 안 보임)</option>
-                        <option value="retro">4. 레트로 (앨범아트 안 보임)</option>
-                    </select>
-                </div>
-
-                <div class="cmp-divider"></div>
-
-                <!-- 테스트 버튼 -->
-                <button id="cmp-test-btn" class="menu_button">
-                    🎵 화면 출력 테스트 (미리보기)
-                </button>
-
+                Character Music Player
             </div>
+            <button id="cmp-panel-close" title="닫기">✕</button>
+        </div>
+
+        <!-- Body -->
+        <div id="cmp-panel-body">
+
+            <!-- 활성화 -->
+            <div class="cmp-row-toggle">
+                <span class="cmp-row-label">확장 활성화</span>
+                <label class="cmp-switch">
+                    <input type="checkbox" id="cmp-enabled" />
+                    <span class="cmp-switch-track"></span>
+                </label>
+            </div>
+
+            <div class="cmp-sep"></div>
+
+            <!-- YouTube API 키 -->
+            <div class="cmp-section">
+                <div class="cmp-label">YouTube Data API 키</div>
+                <input type="text" id="cmp-apikey" class="cmp-input" placeholder="AIza... (없어도 동작)" autocomplete="off" />
+                <div class="cmp-note">
+                    <div>🎵 <b>키 있음</b> — 앨범아트 표시, ▶ 클릭 시 YouTube 재생</div>
+                    <div>🔗 <b>키 없음</b> — ▶ 클릭 시 YouTube 검색 열림</div>
+                </div>
+            </div>
+
+            <!-- 카드 표시 간격 -->
+            <div class="cmp-section">
+                <div class="cmp-label">카드 표시 최소 간격</div>
+                <div class="cmp-inline">
+                    <input type="number" id="cmp-cooldown" class="cmp-input cmp-input-sm" min="1" max="60" value="3" />
+                    <span class="cmp-unit">분</span>
+                </div>
+            </div>
+
+            <!-- 트리거 민감도 -->
+            <div class="cmp-section">
+                <div class="cmp-label">트리거 민감도</div>
+                <select id="cmp-sensitivity" class="cmp-select">
+                    <option value="low">낮음 (키워드 2개 이상)</option>
+                    <option value="medium" selected>보통 (키워드 1개)</option>
+                    <option value="high">높음 (AI가 직접 판단)</option>
+                </select>
+                <div class="cmp-note">
+                    <div>🎯 <b>높음</b> = AI가 매 응답마다 상황 직접 판단</div>
+                </div>
+            </div>
+
+            <!-- 카드 디자인 -->
+            <div class="cmp-section">
+                <div class="cmp-label">카드 디자인</div>
+                <select id="cmp-cardstyle" class="cmp-select">
+                    <option value="full">풀카드 (앨범아트 보임)</option>
+                    <option value="mini">LP판 (앨범아트 보임)</option>
+                    <option value="text">에어팟 (앨범아트 안 보임)</option>
+                    <option value="retro">레트로 (앨범아트 안 보임)</option>
+                </select>
+            </div>
+
+            <div class="cmp-sep"></div>
+
+            <!-- 테스트 버튼 -->
+            <button id="cmp-test-btn">🎵 화면 출력 테스트 (미리보기)</button>
 
         </div>
     </div>
