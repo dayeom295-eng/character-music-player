@@ -80,7 +80,7 @@
                 </select>
             </div>
 
-            <!-- 🟢 [신규] 확장 전용 커스텀 API 설정 영역 -->
+            <!-- 🟢 확장 전용 커스텀 API 설정 영역 -->
             <div class="cmp-section" style="margin-top: 4px; padding-top: 12px; border-top: 1px dashed #eaeaea;">
                 <div class="cmp-label-wrapper">
                     <div class="cmp-label" style="color:#0066cc;">🤖 뮤직 플레이어 전용 AI 설정</div>
@@ -95,23 +95,22 @@
                         <option value="openrouter">OpenRouter</option>
                         <option value="gemini">Google Gemini</option>
                         <option value="openai">OpenAI (GPT)</option>
-                        <option value="claude">Anthropic (Claude)</option>
                         <option value="custom">기타 커스텀 (OpenAI 호환)</option>
                     </select>
                     
                     <div id="cmp-custom-fields" style="display:none; flex-direction:column; gap:6px;">
                         <input type="password" id="cmp-api-key" class="cmp-input" placeholder="API Key (또는 토큰)" autocomplete="off" />
-                        <input type="text" id="cmp-api-model" class="cmp-input" placeholder="정확한 모델명 입력 (예: gemini-1.5-flash)" autocomplete="off" />
+                        <input type="text" id="cmp-api-model" class="cmp-input" placeholder="정확한 모델명 입력 (예: gemini-2.5-flash)" autocomplete="off" />
                         <input type="text" id="cmp-api-endpoint" class="cmp-input" placeholder="커스텀 Endpoint URL 입력" style="display:none;" autocomplete="off" />
                         <div class="cmp-hint" style="background:#f4f9ff; border-color:#b3d4f5;">
-                            💡 실리태번 모델 목록과 무관하게 <b>모델의 정식 명칭</b>을 직접 입력해야 작동합니다. (기본 API 사용 시엔 입력 불필요)
+                            💡 <b>모델의 정식 명칭</b>을 직접 입력해야 작동합니다. (기본 API 사용 시엔 입력 불필요)
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- 테스트 버튼 -->
-            <button id="cmp-test-btn"><i class="fa-solid fa-play"></i> 음악 추천 & 카드 출력 테스트</button>
+            <button id="cmp-test-btn"><i class="fa-solid fa-play"></i> 출력 테스트</button>
             
         </div>
     </div>
