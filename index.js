@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v1.8
+ * v1.9
  */
 
 (async function () {
@@ -13,7 +13,6 @@
 
     const EXTENSION_NAME = 'character-music-player';
 
-    // 외부 API 관련 세팅값 모두 제거
     const DEFAULT_SETTINGS = Object.freeze({
         enabled: true,
         youtubeApiKey: '',
@@ -45,8 +44,41 @@
 
     async function initExtension() {
         const s = getSettings();
-        const settingsHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
-        $('#extensions_settings').append(settingsHtml);
+
+        // ✨ 플로팅 설정 패널을 body에 직접 주입
+        const panelHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
+        $(document.body).append(panelHtml);
+
+        // ✨ 확장 탭에는 최소한의 안내만 표시
+        $('#extensions_settings').append(`
+            <div style="padding:8px 0">
+                <div class="inline-drawer">
+                    <div class="inline-drawer-toggle inline-drawer-header">
+                        <b>🎵 Character Music Player</b>
+                        <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                    </div>
+                    <div class="inline-drawer-content" style="padding:10px 12px; font-size:12px; opacity:0.75; line-height:1.7">
+                        입력창 옆 <b>🎵</b> 버튼을 눌러 설정을 여세요.<br>
+                        <span style="opacity:0.6">v1.9 · Character Music Player</span>
+                    </div>
+                </div>
+            </div>
+        `);
+
+        // ✨ 입력창 툴바에 🎵 버튼 주입
+        // SillyTavern 버전별로 다른 셀렉터를 순서대로 시도
+        if ($('#cmp-open-btn').length === 0) {
+            const $btn = $('<button id="cmp-open-btn" title="Music Player 설정">🎵</button>');
+            if ($('#leftSendMenu').length) {
+                $('#leftSendMenu').append($btn);
+            } else if ($('#options-bar').length) {
+                $('#options-bar').prepend($btn);
+            } else if ($('#send_form').length) {
+                $('#send_form').prepend($btn);
+            } else {
+                $(document.body).append($btn.css({ position:'fixed', bottom:'20px', left:'16px', zIndex:2147483640 }));
+            }
+        }
 
         // UI 값 초기화
         $('#cmp-enabled').prop('checked', s.enabled);
@@ -61,56 +93,70 @@
         $('#cmp-cooldown').on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
         $('#cmp-sensitivity').on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
         $('#cmp-cardstyle').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
-        
-        // ✨ 테스트 버튼 (이제 실리태번 메인 API만 사용하므로 코드가 간결해짐)
+
+        // 패널 열기/닫기
+        $(document).on('click', '#cmp-open-btn', function (e) {
+            e.stopPropagation();
+            $('#cmp-panel').toggleClass('cmp-panel-open');
+        });
+        $(document).on('click', '#cmp-panel-close', function () {
+            $('#cmp-panel').removeClass('cmp-panel-open');
+        });
+        // 패널 바깥 클릭 시 닫기
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('#cmp-panel, #cmp-open-btn').length) {
+                $('#cmp-panel').removeClass('cmp-panel-open');
+            }
+        });
+        // 패널 내부 클릭은 전파 중단 (닫힘 방지)
+        $(document).on('click', '#cmp-panel', function (e) {
+            e.stopPropagation();
+        });
+
+        // 테스트 버튼
         $('#cmp-test-btn').on('click', async function () {
             toastr.info("AI 응답을 테스트 중입니다...", "Music Player");
-            
             const dummyPrompt = `이건 시스템 테스트야. 무조건 아래 JSON 형식으로만 답해.\n{"title":"테스트 곡 제목","artist":"테스트 가수","reason":"연결 성공!"}`;
-            
             try {
                 const resText = await getAiResponse(dummyPrompt);
                 if (!resText) {
                     toastr.error("API 응답이 없습니다. 실리태번 메인 API가 정상 연결되었는지 확인하세요.", "Music Player 오류");
                     return;
                 }
-                
                 const parsed = parseJsonSafely(resText);
                 if (!parsed) {
                     toastr.warning("API는 연결되었지만, AI가 JSON 형식을 지키지 않았습니다.", "Music Player 경고");
                     console.log("[CMP] AI 원본 응답:", resText);
                     return;
                 }
-
                 toastr.success("연결 완벽 성공! UI를 띄웁니다.", "Music Player");
-                renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, {name2: "테스터"}, getSettings().cardStyle || 'full');
-
+                renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, { name2: "테스터" }, getSettings().cardStyle || 'full');
+                $('#cmp-panel').removeClass('cmp-panel-open');
             } catch (error) {
                 toastr.error("오류 발생! F12 콘솔창을 확인하세요.", "Music Player 오류");
                 console.error("[CMP] 테스트 버튼 오류:", error);
             }
         });
 
+        // 최소화 버튼
         if ($('#cmp-minimized-btn').length === 0) {
             $(document.body).append('<div id="cmp-minimized-btn">🎵 음악 펴기</div>');
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (실리태번 전용 모드) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.9 ✅`);
     }
 
-    // 🚀 실리태번 메인 API 하나만 사용하도록 단순화
     async function getAiResponse(prompt) {
         const { generateQuietPrompt } = SillyTavern.getContext();
-        try { 
-            return await generateQuietPrompt(prompt); 
-        } catch (e) { 
+        try {
+            return await generateQuietPrompt(prompt);
+        } catch (e) {
             console.error("[CMP] API 호출 실패:", e);
-            return null; 
+            return null;
         }
     }
 
-    // 안전하게 JSON만 파싱해내는 함수
     function parseJsonSafely(text) {
         try {
             const clean = text.replace(/```json|```/gi, '').trim();
@@ -176,7 +222,6 @@
     async function requestMusic(text, context) {
         const charName = context.name2 || '캐릭터';
         const recentChat = (context.chat || []).slice(-6).map(m => `${m.is_user ? (context.name1 || 'User') : charName}: ${m.mes}`).join('\n');
-        
         const prompt = `다음은 나(User)와 "${charName}"와의 최근 대화야.
 ---
 ${recentChat}
@@ -186,14 +231,13 @@ ${recentChat}
 2. 특정 곡 언급이 없다면, 현재 분위기와 감정에 맞는 실제 존재하는 곡 1개를 알아서 추천해.
 반드시 아래 JSON 형식으로만 답해. 마크다운이나 다른 부가 설명은 절대 쓰지 마.
 {"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
-
         try {
             const res = await getAiResponse(prompt);
             if (!res) return null;
             return parseJsonSafely(res);
-        } catch (err) { 
+        } catch (err) {
             console.error("[CMP] 곡 요청 중 오류 발생:", err);
-            return null; 
+            return null;
         }
     }
 
@@ -214,12 +258,11 @@ ${recentChat}
         const charName = context.name2 || '캐릭터';
         const cardId   = `cmp-card-${Date.now()}`;
         const watchUrl = videoInfo?.watchUrl || '#';
-        const thumb = videoInfo?.thumbnail;
+        const thumb    = videoInfo?.thumbnail;
 
         const minBtn   = `<button class="music-card-minimize" title="최소화">−</button>`;
         const closeBtn = `<button class="music-card-close" data-id="${cardId}" title="닫기">✕</button>`;
         const playBtn  = `<button class="music-card-play" data-url="${escapeHtml(watchUrl)}" title="YouTube에서 열기">▶</button>`;
-        
         const controls = `<div class="music-card-controls">${playBtn}${minBtn}${closeBtn}</div>`;
         let card = '';
 
@@ -240,7 +283,6 @@ ${recentChat}
         if ($('#cmp-floating-container').length === 0) {
             $(document.body).append('<div id="cmp-floating-container" style="display:none;"></div>');
         }
-        
         $('#cmp-minimized-btn').hide();
         $('#cmp-floating-container').html(card).css('display', 'flex').hide().fadeIn(300);
     }
@@ -252,13 +294,13 @@ ${recentChat}
 
     $(document).on('click', '.music-card-close', function () {
         const cardId = $(this).attr('data-id');
-        $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); }); 
-        $('#cmp-minimized-btn').hide(); 
+        $(`#${cardId}`).fadeOut(200, function () { $(this).remove(); });
+        $('#cmp-minimized-btn').hide();
         $('#cmp-floating-container').hide();
     });
 
     $(document).on('click', '.music-card-minimize', function () {
-        $('#cmp-floating-container').fadeOut(200, function() {
+        $('#cmp-floating-container').fadeOut(200, function () {
             $('#cmp-minimized-btn').fadeIn(200);
         });
     });
@@ -269,7 +311,7 @@ ${recentChat}
     });
 
     $(document).on('click', '#cmp-minimized-btn', function () {
-        $(this).fadeOut(200, function() {
+        $(this).fadeOut(200, function () {
             $('#cmp-floating-container').css('display', 'flex').hide().fadeIn(200);
         });
     });
