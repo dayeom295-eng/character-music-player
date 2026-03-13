@@ -1,6 +1,6 @@
 /**
- * Character Music Player
- * v1.8
+ * Character Music 시그니처 Player
+ * v1.9
  */
 
 (async function () {
@@ -65,24 +65,37 @@
             </div>
         `);
 
-        // ✨ ≡ 메뉴(leftSendMenu 팝업) 안에 항목으로 주입
-        // leftSendMenu는 클릭 시 동적으로 열리므로 이미 DOM에 존재하는 경우가 많음
+        // ✨ ≡ 메뉴(leftSendMenu) 안에 항목 주입
+        // 메뉴는 열릴 때마다 내용이 바뀔 수 있으므로 MutationObserver로 감시
         function injectMenuBtn() {
-            if ($('#cmp-open-btn').length) return; // 이미 주입됨
+            if ($('#cmp-open-btn').length) return;
             const $menu = $('#leftSendMenu');
             if (!$menu.length) return;
-            const $btn = $(`
-                <div id="cmp-open-btn" title="Music Player 설정">
-                    <span>🎵</span> Music Player
-                </div>
-            `);
+            const $btn = $('<div id="cmp-open-btn" title="Music Player 설정"><span>🎵</span> Music Player</div>');
             $menu.append($btn);
         }
 
-        // DOM 준비 후 즉시 시도, 혹시 메뉴가 나중에 렌더링될 경우 짧게 재시도
-        injectMenuBtn();
-        setTimeout(injectMenuBtn, 500);
-        setTimeout(injectMenuBtn, 1500);
+        // ≡ 버튼 클릭 시 즉시 주입 (메뉴가 열리는 시점에 확실히 삽입)
+        $(document).on('click', '#options_button, #leftSendMenuButton, [id*="option_button"]', function () {
+            setTimeout(injectMenuBtn, 0);
+        });
+
+        // MutationObserver: #leftSendMenu 자식이 바뀔 때마다 항목 재주입
+        function startMenuObserver() {
+            const menu = document.getElementById('leftSendMenu');
+            if (menu) {
+                new MutationObserver(injectMenuBtn).observe(menu, { childList: true, subtree: true });
+                injectMenuBtn();
+            } else {
+                // leftSendMenu가 아직 없으면 body에서 생성될 때 감지
+                const bo = new MutationObserver(function () {
+                    const m = document.getElementById('leftSendMenu');
+                    if (m) { bo.disconnect(); startMenuObserver(); }
+                });
+                bo.observe(document.body, { childList: true, subtree: false });
+            }
+        }
+        startMenuObserver();
 
         // UI 값 초기화
         $('#cmp-enabled').prop('checked', s.enabled);
@@ -133,7 +146,7 @@
                     console.log("[CMP] AI 원본 응답:", resText);
                     return;
                 }
-                toastr.success("연결 성공! UI를 띄웁니다.", "Music Player");
+                toastr.success("연결 완벽 성공! UI를 띄웁니다.", "Music Player");
                 renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, { name2: "테스터" }, getSettings().cardStyle || 'full');
                 $('#cmp-panel').removeClass('cmp-panel-open');
             } catch (error) {
@@ -148,7 +161,7 @@
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.9 ✅`);
     }
 
     async function getAiResponse(prompt) {
