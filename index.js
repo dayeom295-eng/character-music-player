@@ -52,7 +52,7 @@
         // 2. 바디에 플로팅 패널 삽입
         $('body').append($html.filter('#cmp-panel'));
 
-        // 3. ST 입력창 좌측 햄버거 메뉴(#options)에 버튼 삽입
+       // 3. ST 입력창 좌측 햄버거 메뉴(#options)에 버튼 삽입
         setTimeout(() => {
             const menuBtn = $html.filter('#cmp-open-btn-wrapper').html();
             $('#options').append(menuBtn);
@@ -66,12 +66,19 @@
                     panel.removeClass('cmp-panel-open');
                 } else {
                     panel.addClass('cmp-panel-open');
-                    // ST 기본 햄버거 메뉴 닫기
+                    
+                    // --- ST 햄버거 메뉴 및 모바일 UI 닫기 처리 ---
                     $('#options').hide();
                     $('#options_button').removeClass('active');
+                    
+                    // 🟢 모바일/태블릿 환경: ST 좌측 메뉴(Drawer)를 완전히 닫아줌
+                    if ($(window).width() <= 800) {
+                        $('#left-nav').removeClass('mobileslide'); // 좌측 패널 닫기
+                        $('.nav-overlay').click(); // 어두운 배경 오버레이 클릭(제거) 처리
+                    }
                 }
             });
-        }, 1000); 
+        }, 1000);
 
         // 4. 패널 닫기 버튼 이벤트
         $('#cmp-panel-close').on('click', () => {
