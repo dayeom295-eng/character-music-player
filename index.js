@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v1.8 — 전 기기 상단 고정 & 실시간 API 오류 알림/테스트 기능 추가
+ * v1.8
  */
 
 (async function () {
@@ -13,17 +13,13 @@
 
     const EXTENSION_NAME = 'character-music-player';
 
+    // 외부 API 관련 세팅값 모두 제거
     const DEFAULT_SETTINGS = Object.freeze({
         enabled: true,
         youtubeApiKey: '',
         cooldownMinutes: 3,
         triggerSensitivity: 'medium',
-        cardStyle: 'full',
-        apiProvider: 'sillytavern',
-        apiKey: '',
-        geminiModel: 'gemini-1.5-flash-latest',
-        customUrl: '',
-        customModel: ''
+        cardStyle: 'full'
     });
 
     const TRIGGER_PATTERNS = [
@@ -44,12 +40,6 @@
         for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
             if (!Object.hasOwn(s, k)) s[k] = v;
         }
-        // ✨ 구버전 호환: geminiApiKey → apiKey 마이그레이션
-        if (s.geminiApiKey && !s.apiKey) {
-            s.apiKey = s.geminiApiKey;
-            delete s.geminiApiKey;
-            saveSettingsDebounced();
-        }
         return s;
     }
 
@@ -64,26 +54,6 @@
         $('#cmp-cooldown').val(s.cooldownMinutes);
         $('#cmp-sensitivity').val(s.triggerSensitivity);
         $('#cmp-cardstyle').val(s.cardStyle || 'full');
-        
-        $('#cmp-api-provider').val(s.apiProvider || 'sillytavern');
-        $('#cmp-gemini-model').val(s.geminiModel || 'gemini-1.5-flash-latest');
-        $('#cmp-custom-url').val(s.customUrl || '');
-        $('#cmp-custom-model').val(s.customModel || '');
-        $('#cmp-api-key').val(s.apiKey || '');
-
-        function updateAiUi() {
-            const provider = $('#cmp-api-provider').val();
-            if (provider === 'sillytavern') { 
-                $('#cmp-gemini-wrap, #cmp-custom-wrap, #cmp-key-wrap').slideUp(150); 
-            } else if (provider === 'gemini') { 
-                $('#cmp-gemini-wrap, #cmp-key-wrap').slideDown(150); 
-                $('#cmp-custom-wrap').hide(); 
-            } else if (provider === 'custom') { 
-                $('#cmp-custom-wrap, #cmp-key-wrap').slideDown(150); 
-                $('#cmp-gemini-wrap').hide(); 
-            }
-        }
-        updateAiUi(); 
 
         // 설정 저장
         $('#cmp-enabled').on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
@@ -92,22 +62,16 @@
         $('#cmp-sensitivity').on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
         $('#cmp-cardstyle').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
         
-        $('#cmp-api-provider').on('change', function () { getSettings().apiProvider = this.value; saveSettingsDebounced(); updateAiUi(); });
-        $('#cmp-gemini-model').on('input', function () { getSettings().geminiModel = this.value.trim(); saveSettingsDebounced(); });
-        $('#cmp-custom-url').on('input', function () { getSettings().customUrl = this.value.trim(); saveSettingsDebounced(); });
-        $('#cmp-custom-model').on('input', function () { getSettings().customModel = this.value.trim(); saveSettingsDebounced(); });
-        $('#cmp-api-key').on('input', function () { getSettings().apiKey = this.value.trim(); saveSettingsDebounced(); });
-
-        // ✨ 찐 API 통신 테스트 버튼
+        // ✨ 테스트 버튼 (이제 실리태번 메인 API만 사용하므로 코드가 간결해짐)
         $('#cmp-test-btn').on('click', async function () {
-            toastr.info("API 연결을 테스트 중입니다...", "Music Player");
+            toastr.info("AI 응답을 테스트 중입니다...", "Music Player");
             
-            const dummyPrompt = `이건 API 연결 테스트야. 무조건 아래 JSON 형식으로만 답해.\n{"title":"테스트 곡 제목","artist":"테스트 가수","reason":"연결 성공!"}`;
+            const dummyPrompt = `이건 시스템 테스트야. 무조건 아래 JSON 형식으로만 답해.\n{"title":"테스트 곡 제목","artist":"테스트 가수","reason":"연결 성공!"}`;
             
             try {
-                const resText = await getAiResponse(dummyPrompt, true);
+                const resText = await getAiResponse(dummyPrompt);
                 if (!resText) {
-                    toastr.error("API 응답이 없습니다. 설정(URL, 키, 모델명)을 확인하세요.", "Music Player 오류");
+                    toastr.error("API 응답이 없습니다. 실리태번 메인 API가 정상 연결되었는지 확인하세요.", "Music Player 오류");
                     return;
                 }
                 
@@ -118,11 +82,11 @@
                     return;
                 }
 
-                toastr.success("API 연결 완벽 성공! UI를 띄웁니다.", "Music Player");
+                toastr.success("연결 완벽 성공! UI를 띄웁니다.", "Music Player");
                 renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, {name2: "테스터"}, getSettings().cardStyle || 'full');
 
             } catch (error) {
-                toastr.error("통신 오류 발생! F12 콘솔창을 확인하세요.", "Music Player 오류");
+                toastr.error("오류 발생! F12 콘솔창을 확인하세요.", "Music Player 오류");
                 console.error("[CMP] 테스트 버튼 오류:", error);
             }
         });
@@ -132,80 +96,18 @@
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (API 실시간 디버깅 탑재) ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.8 (실리태번 전용 모드) ✅`);
     }
 
-    // 🚀 API 분기 처리
-    async function getAiResponse(prompt, isJson = false) {
-        const s = getSettings();
-        if (s.apiProvider === 'gemini') {
-            return await callGeminiAPI(prompt, isJson, s);
-        } else if (s.apiProvider === 'custom') {
-            return await callCustomOpenAI(prompt, isJson, s);
-        } else {
-            const { generateQuietPrompt } = SillyTavern.getContext();
-            try { return await generateQuietPrompt(prompt); } catch { return null; }
+    // 🚀 실리태번 메인 API 하나만 사용하도록 단순화
+    async function getAiResponse(prompt) {
+        const { generateQuietPrompt } = SillyTavern.getContext();
+        try { 
+            return await generateQuietPrompt(prompt); 
+        } catch (e) { 
+            console.error("[CMP] API 호출 실패:", e);
+            return null; 
         }
-    }
-
-    // 🤖 Gemini API 연결
-    async function callGeminiAPI(prompt, isJson, s) {
-        if (!s.apiKey) throw new Error("Gemini API 키가 입력되지 않았습니다.");
-        
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${s.geminiModel}:generateContent?key=${s.apiKey}`;
-        const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 200 } };
-        if (isJson) payload.generationConfig.responseMimeType = "application/json";
-
-        const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        if (!res.ok) throw new Error(`Gemini HTTP Error: ${res.status}`);
-        
-        const data = await res.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
-    }
-
-    // 🤖 OpenRouter / OpenAI 호환 API 연결 (가장 에러가 많은 부분)
-    async function callCustomOpenAI(prompt, isJson, s) {
-        if (!s.customUrl || !s.customModel || !s.apiKey) {
-            throw new Error("Custom API 설정(URL, 모델명, 키) 중 누락된 것이 있습니다.");
-        }
-        
-        // URL 끝 슬래시 제거 후, 베이스 URL이면 /chat/completions 자동 추가
-        let cleanUrl = s.customUrl.replace(/\/$/, "");
-        if (!cleanUrl.endsWith('/chat/completions') && !cleanUrl.endsWith('/completions')) {
-            cleanUrl = cleanUrl + '/chat/completions';
-        }
-
-        const payload = { 
-            model: s.customModel, 
-            messages: [{ role: "user", content: prompt }], 
-            temperature: 0.7, 
-            max_tokens: 300
-        };
-
-        // ✨ JSON 모드 강제 — 모델이 JSON 이외의 텍스트를 반환하는 문제 방지
-        if (isJson) {
-            payload.response_format = { type: "json_object" };
-        }
-
-        const res = await fetch(cleanUrl, { 
-            method: 'POST', 
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${s.apiKey}`,
-                'HTTP-Referer': 'https://sillytavern.app', // OpenRouter 권장 헤더
-                'X-Title': 'SillyTavern Music Player'
-            }, 
-            body: JSON.stringify(payload) 
-        });
-
-        if (!res.ok) {
-            const errText = await res.text();
-            console.error(`[CMP] Custom API 실패 (${res.status}) URL: ${cleanUrl}`, errText);
-            throw new Error(`Custom API HTTP Error: ${res.status} — ${errText.slice(0, 200)}`);
-        }
-        
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content || null;
     }
 
     // 안전하게 JSON만 파싱해내는 함수
@@ -263,7 +165,7 @@
             try {
                 const charName = context.name2 || '캐릭터';
                 const prompt = `다음은 "${charName}"의 대화 메시지야:\n"${text}"\n이 메시지가 음악 카드를 띄울 만한 감성적인 상황이면 "yes", 아니면 "no"만 답해.`;
-                const res = await getAiResponse(prompt, false);
+                const res = await getAiResponse(prompt);
                 return res?.toLowerCase().includes('yes') ?? false;
             } catch { return false; }
         }
@@ -286,7 +188,7 @@ ${recentChat}
 {"title":"곡제목","artist":"아티스트명","reason":"한줄이유15자이내"}`;
 
         try {
-            const res = await getAiResponse(prompt, true);
+            const res = await getAiResponse(prompt);
             if (!res) return null;
             return parseJsonSafely(res);
         } catch (err) { 
