@@ -1,6 +1,6 @@
 /**
  * Character Music 시그니처 Player
- * v1.9
+ * v2.0 - 좌측 메뉴 편입 및 모던 화이트 플로팅 UI 도입
  */
 
 (async function () {
@@ -45,64 +45,96 @@
     async function initExtension() {
         const s = getSettings();
 
-        // 원래 방식 그대로: extensions_settings에 주입
-        const settingsHtml = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
-        $('#extensions_settings').append(settingsHtml);
+        // 1. HTML 템플릿 로드
+        const htmlText = await $.get(`scripts/extensions/third-party/${EXTENSION_NAME}/settings.html`);
+        const $html = $(htmlText);
 
-        // UI 값 초기화
-        $('#cmp-enabled').prop('checked', s.enabled);
-        $('#cmp-apikey').val(s.youtubeApiKey || '');
-        $('#cmp-cooldown').val(s.cooldownMinutes);
-        $('#cmp-sensitivity').val(s.triggerSensitivity);
-        $('#cmp-cardstyle').val(s.cardStyle || 'full');
+        // 2. 바디에 플로팅 패널 삽입
+        $('body').append($html.filter('#cmp-panel'));
 
-        // 설정 저장
-        $('#cmp-enabled').on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
-        $('#cmp-apikey').on('input', function () { getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced(); });
-        $('#cmp-cooldown').on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
-        $('#cmp-sensitivity').on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
-        $('#cmp-cardstyle').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
+        // 3. ST 입력창 좌측 햄버거 메뉴(#options)에 버튼 삽입
+        // 문서가 준비되었을 때 options 메뉴 안의 제일 끝에 버튼 추가
+        setTimeout(() => {
+            const menuBtn = $html.filter('#cmp-open-btn-wrapper').html();
+            $('#options').append(menuBtn);
+            
+            // 버튼 클릭 시 ST 기본 메뉴 닫고, 커스텀 패널 열기
+            $('#cmp-open-btn').on('click', function (e) {
+                e.stopPropagation();
+                
+                const panel = $('#cmp-panel');
+                if (panel.hasClass('cmp-panel-open')) {
+                    panel.removeClass('cmp-panel-open');
+                } else {
+                    panel.addClass('cmp-panel-open');
+                    // ST 자체 옵션 메뉴 닫기
+                    $('#options').hide();
+                    $('#options_button').removeClass('active');
+                }
+            });
+        }, 1000); // UI 로딩 대기
 
-        // 테스트 버튼
+        // 4. 패널 닫기 버튼 이벤트
+        $('#cmp-panel-close').on('click', () => {
+            $('#cmp-panel').removeClass('cmp-panel-open');
+        });
+
+        // 5. 패널 외부 클릭 시 패널 닫기 UX
+        $(document).on('click', function(e) {
+            if ($('#cmp-panel').hasClass('cmp-panel-open')) {
+                if (!$(e.target).closest('#cmp-panel').length && !$(e.target).closest('#cmp-open-btn').length) {
+                    $('#cmp-panel').removeClass('cmp-panel-open');
+                }
+            }
+        });
+
+        // 6. UI 값 초기화 및 저장 이벤트 바인딩
+        $('#cmp-enabled').prop('checked', s.enabled).on('change', function () { getSettings().enabled = this.checked; saveSettingsDebounced(); });
+        $('#cmp-apikey').val(s.youtubeApiKey || '').on('input', function () { getSettings().youtubeApiKey = this.value.trim(); saveSettingsDebounced(); });
+        $('#cmp-cooldown').val(s.cooldownMinutes).on('input', function () { getSettings().cooldownMinutes = parseInt(this.value) || 3; saveSettingsDebounced(); });
+        $('#cmp-sensitivity').val(s.triggerSensitivity).on('change', function () { getSettings().triggerSensitivity = this.value; saveSettingsDebounced(); });
+        $('#cmp-cardstyle').val(s.cardStyle || 'full').on('change', function () { getSettings().cardStyle = this.value; saveSettingsDebounced(); });
+
+        // 7. 화면 출력 테스트
         $('#cmp-test-btn').on('click', async function () {
-            toastr.info("AI 응답을 테스트 중입니다...", "Music Player");
+            const btn = $(this);
+            btn.html('<i class="fa-solid fa-spinner fa-spin"></i> 테스트 중...');
+            
             const dummyPrompt = `이건 시스템 테스트야. 무조건 아래 JSON 형식으로만 답해.\n{"title":"테스트 곡 제목","artist":"테스트 가수","reason":"연결 성공!"}`;
             try {
                 const resText = await getAiResponse(dummyPrompt);
                 if (!resText) {
-                    toastr.error("API 응답이 없습니다. 실리태번 메인 API가 정상 연결되었는지 확인하세요.", "Music Player 오류");
+                    toastr.error("실리태번 메인 API 응답이 없습니다.", "Music Player 오류");
                     return;
                 }
                 const parsed = parseJsonSafely(resText);
                 if (!parsed) {
-                    toastr.warning("API는 연결되었지만, AI가 JSON 형식을 지키지 않았습니다.", "Music Player 경고");
-                    console.log("[CMP] AI 원본 응답:", resText);
+                    toastr.warning("AI가 JSON 형식을 지키지 않았습니다.", "Music Player 경고");
                     return;
                 }
                 toastr.success("연결 성공! UI를 띄웁니다.", "Music Player");
                 renderCard(parsed, { watchUrl: "https://youtube.com", thumbnail: null }, { name2: "테스터" }, getSettings().cardStyle || 'full');
+                
+                // 성공 시 패널 살짝 닫아주기 (카드가 잘 보이도록)
+                $('#cmp-panel').removeClass('cmp-panel-open');
             } catch (error) {
-                toastr.error("오류 발생! F12 콘솔창을 확인하세요.", "Music Player 오류");
-                console.error("[CMP] 테스트 버튼 오류:", error);
+                toastr.error("오류 발생! 콘솔창을 확인하세요.", "Music Player 오류");
+            } finally {
+                btn.html('<i class="fa-solid fa-play"></i> 화면 출력 미리보기');
             }
         });
 
         if ($('#cmp-minimized-btn').length === 0) {
-            $(document.body).append('<div id="cmp-minimized-btn">🎵 음악 펴기</div>');
+            $(document.body).append('<div id="cmp-minimized-btn"><i class="fa-solid fa-music"></i> 음악 펴기</div>');
         }
 
         eventSource.on(event_types.MESSAGE_RECEIVED, onMessageReceived);
-        console.log(`[${EXTENSION_NAME}] 로드 완료 v1.9 ✅`);
+        console.log(`[${EXTENSION_NAME}] 로드 완료 v2.0 (모던 화이트 UI 적용) ✅`);
     }
 
     async function getAiResponse(prompt) {
         const { generateQuietPrompt } = SillyTavern.getContext();
-        try {
-            return await generateQuietPrompt(prompt);
-        } catch (e) {
-            console.error("[CMP] API 호출 실패:", e);
-            return null;
-        }
+        try { return await generateQuietPrompt(prompt); } catch (e) { return null; }
     }
 
     function parseJsonSafely(text) {
@@ -112,9 +144,7 @@
             const e = clean.lastIndexOf('}');
             if (s === -1 || e === -1) return null;
             return JSON.parse(clean.slice(s, e + 1));
-        } catch (e) {
-            return null;
-        }
+        } catch (e) { return null; }
     }
 
     async function onMessageReceived(messageIdOrData) {
@@ -141,10 +171,8 @@
 
         try {
             const musicInfo = await requestMusic(text, context);
-            if (!musicInfo) {
-                console.warn("[CMP] AI가 곡 정보를 생성하지 못해 카드를 띄우지 않습니다.");
-                return;
-            }
+            if (!musicInfo) return;
+            
             const videoInfo = await searchYouTube(musicInfo, s.youtubeApiKey);
             renderCard(musicInfo, videoInfo, context, s.cardStyle || 'full');
         } catch (err) {
@@ -183,10 +211,7 @@ ${recentChat}
             const res = await getAiResponse(prompt);
             if (!res) return null;
             return parseJsonSafely(res);
-        } catch (err) {
-            console.error("[CMP] 곡 요청 중 오류 발생:", err);
-            return null;
-        }
+        } catch (err) { return null; }
     }
 
     async function searchYouTube(musicInfo, apiKey) {
